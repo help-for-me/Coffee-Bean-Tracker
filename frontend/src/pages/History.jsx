@@ -23,7 +23,10 @@ export default function History() {
             <li key={entry.id} className="flex items-center justify-between py-3">
               <div>
                 <p className="font-medium text-gray-900">
-                  {entry.entry_type === 'bag' ? '📦' : '☕'} {entry.roaster} — {entry.bean_name}
+                  <span className="mr-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">
+                    {entry.entry_type === 'bag' ? 'Bag' : 'Cafe'}
+                  </span>
+                  {entry.roaster} — {entry.bean_name}
                 </p>
                 <p className="text-xs text-gray-500">
                   {entry.entry_date ?? entry.date_entered.slice(0, 10)}
