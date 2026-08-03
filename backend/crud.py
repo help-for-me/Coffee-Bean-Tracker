@@ -102,6 +102,29 @@ def _insert_rating(conn: sqlite3.Connection, entry_id: int, data: RatingCreate) 
     return cursor.lastrowid
 
 
+def list_entries(
+    conn: sqlite3.Connection, query: Optional[str] = None, limit: Optional[int] = None
+) -> list[dict]:
+    sql = """
+        SELECT e.id, bp.roaster, bp.bean_name, e.entry_type, e.entry_date, e.date_entered,
+               e.extraction_status,
+               (SELECT r.score FROM ratings r WHERE r.entry_id = e.id ORDER BY r.date_entered DESC, r.id DESC LIMIT 1) AS latest_score
+        FROM entries e
+        JOIN bean_profiles bp ON bp.id = e.bean_profile_id
+    """
+    params: list = []
+    if query:
+        pattern = f"%{query.strip()}%"
+        sql += " WHERE bp.roaster LIKE ? OR bp.bean_name LIKE ? OR e.cafe_name LIKE ?"
+        params += [pattern, pattern, pattern]
+    sql += " ORDER BY e.date_entered DESC, e.id DESC"
+    if limit:
+        sql += " LIMIT ?"
+        params.append(limit)
+    rows = conn.execute(sql, params).fetchall()
+    return [dict(row) for row in rows]
+
+
 def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
     entry_row = conn.execute(
         """

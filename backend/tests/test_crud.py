@@ -1,5 +1,5 @@
 from backend import crud
-from backend.models import EntryCreate
+from backend.models import EntryCreate, RatingCreate
 
 
 def test_resolve_bean_profile_creates_new(conn):
@@ -68,3 +68,54 @@ def test_get_entry_includes_bean_profile_and_ratings(conn):
 
 def test_get_entry_missing_returns_none(conn):
     assert crud.get_entry(conn, 999) is None
+
+
+def test_list_entries_orders_newest_first(conn):
+    first_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    )
+    second_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="Intelligentsia", bean_name="Black Cat", score=7)
+    )
+    results = crud.list_entries(conn)
+    assert [r["id"] for r in results] == [second_id, first_id]
+
+
+def test_list_entries_includes_latest_score(conn):
+    entry_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=6)
+    )
+    crud.add_rating(conn, entry_id, RatingCreate(score=9))
+    results = crud.list_entries(conn)
+    assert results[0]["latest_score"] == 9
+
+
+def test_list_entries_filters_by_query(conn):
+    crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    )
+    crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="Intelligentsia", bean_name="Black Cat", score=7)
+    )
+    results = crud.list_entries(conn, query="Intelli")
+    assert len(results) == 1
+    assert results[0]["roaster"] == "Intelligentsia"
+
+
+def test_list_entries_respects_limit(conn):
+    for i in range(3):
+        crud.create_entry(
+            conn, EntryCreate(entry_type="bag", roaster=f"Roaster {i}", bean_name="Blend", score=5)
+        )
+    results = crud.list_entries(conn, limit=2)
+    assert len(results) == 2
+
+
+def test_add_rating_appends_second_rating(conn):
+    entry_id = crud.create_entry(
+        conn, EntryCreate(entry_type="cafe_cup", roaster="Local Cafe", bean_name="House Blend", score=6)
+    )
+    crud.add_rating(conn, entry_id, RatingCreate(score=8, narrative_notes="Better second time"))
+    entry = crud.get_entry(conn, entry_id)
+    assert len(entry["ratings"]) == 2
+    assert entry["ratings"][1]["score"] == 8
