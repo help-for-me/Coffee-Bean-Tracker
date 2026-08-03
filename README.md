@@ -86,8 +86,7 @@ opening in a spreadsheet, not as a re-import source.
 
 ## Future ideas (not version-gated)
 
-Things worth doing eventually but not scoped or scheduled yet, since they
-depend on outside community processes rather than just building the app:
+Things worth doing eventually but not scoped or scheduled yet:
 
 - **Unraid Community Applications listing.** The self-hosted Unraid template
   (0.4.0) covers "click Update" for personal use. Submitting it to the public
@@ -99,6 +98,11 @@ depend on outside community processes rather than just building the app:
   needed for that. Adding a one-command install script to the community
   Helper-Scripts project is a nicer on-ramp for other Proxmox users, but
   it's a separate community submission, not a blocker for personal use.
+- **Web-lookup enrichment.** Describe a bean by text or picture (no bag
+  label needed) and have the app search the internet for whatever details
+  it can find (roaster's own site, etc.) to fill in the gaps. Explicitly
+  the lowest priority idea on this whole list - last thing to tackle, after
+  everything else including the numbered roadmap above.
 
 ## License
 
