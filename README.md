@@ -75,8 +75,14 @@ its port to your LAN and don't forward it through your router or firewall.
 - [ ] 1.7.0 - Settings UI
 - [ ] 1.8.0 - Multi-user/auth
 - [ ] 1.9.0 - Visual design pass
-- [ ] 1.10.0 - Data import (restore from a CSV/XLSX export, e.g. after moving to a new install)
+- [ ] 1.10.0 - Data export/import (JSON round-trip backup, for restoring or moving to a new install)
 - [ ] 2.0.0 - Blank slate
+
+The 1.10.0 backup format is JSON, not CSV/XLSX. An entry can have several
+ratings, and that one-to-many relationship doesn't flatten into rows and
+columns without ambiguity - JSON keeps the structure exact so a restore is
+reliable. CSV (MVP) and XLSX (1.3.0) stay as human-readable reports for
+opening in a spreadsheet, not as a re-import source.
 
 ## Future ideas (not version-gated)
 
