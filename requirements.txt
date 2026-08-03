@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+python-multipart>=0.0.9
+anthropic>=0.39
+pandas>=2.2
+pytest>=8.3
+httpx>=0.27

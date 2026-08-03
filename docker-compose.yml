@@ -1,0 +1,12 @@
+services:
+  coffee-tracker:
+    image: ghcr.io/yourusername/coffee-tracker:latest
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ./data:/app/data
+      - ./photos:/app/data/photos
+      - ./exports:/app/exports
+    env_file:
+      - .env
+    restart: unless-stopped
