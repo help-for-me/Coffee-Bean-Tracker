@@ -64,7 +64,7 @@ its port to your LAN and don't forward it through your router or firewall.
 - [ ] 0.1.0 - Foundation (schema, manual entry)
 - [ ] 0.2.0 - AI/OCR extraction loop
 - [ ] 0.3.0 - Insights (stats and charts)
-- [ ] 0.4.0 - Real usage and deployment
+- [ ] 0.4.0 - Real usage and deployment (Docker, GHCR, self-hosted Unraid template)
 - [ ] 1.0.0 - Stable
 - [ ] 1.1.0 - Fixing wrong data
 - [ ] 1.2.0 - Fuzzy repurchase matching
@@ -75,7 +75,24 @@ its port to your LAN and don't forward it through your router or firewall.
 - [ ] 1.7.0 - Settings UI
 - [ ] 1.8.0 - Multi-user/auth
 - [ ] 1.9.0 - Visual design pass
+- [ ] 1.10.0 - Data import (restore from a CSV/XLSX export, e.g. after moving to a new install)
 - [ ] 2.0.0 - Blank slate
+
+## Future ideas (not version-gated)
+
+Things worth doing eventually but not scoped or scheduled yet, since they
+depend on outside community processes rather than just building the app:
+
+- **Unraid Community Applications listing.** The self-hosted Unraid template
+  (0.4.0) covers "click Update" for personal use. Submitting it to the public
+  CA feed so anyone can find and install it is a bigger, separate step (PR
+  review, ongoing support expectations) - a someday goal, not required for
+  this app to work well on Unraid.
+- **Proxmox VE Helper-Scripts.** The app already runs on Proxmox today via
+  plain Docker Compose (see the Deployment note above) - no extra work
+  needed for that. Adding a one-command install script to the community
+  Helper-Scripts project is a nicer on-ramp for other Proxmox users, but
+  it's a separate community submission, not a blocker for personal use.
 
 ## License
 

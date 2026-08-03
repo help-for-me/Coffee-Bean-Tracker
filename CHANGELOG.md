@@ -9,3 +9,8 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 - Project scaffolding: README, LICENSE (MIT), CHANGELOG.
+- Backend foundation: SQLite schema, entry/rating creation and listing,
+  roaster/bean-name autocomplete.
+- Roadmap: self-hosted Unraid template noted under 0.4.0, data import
+  added as 1.10.0, and a "Future ideas" section for the Unraid CA feed
+  and Proxmox Helper-Scripts community submissions.
