@@ -1,0 +1,22 @@
+# Personal data, never committed
+/data/
+/photos/
+/exports/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Env
+.env
+
+# OS
+.DS_Store
