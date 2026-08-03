@@ -7,10 +7,21 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-03
+
 ### Added
-- Project scaffolding: README, LICENSE (MIT), CHANGELOG.
-- Backend foundation: SQLite schema, entry/rating creation and listing,
-  roaster/bean-name autocomplete.
-- Roadmap: self-hosted Unraid template noted under 0.4.0, data import
-  added as 1.10.0, and a "Future ideas" section for the Unraid CA feed
-  and Proxmox Helper-Scripts community submissions.
+- Full SQLite schema, every table from the spec including ones unused until later milestones.
+- Backend: entry and rating creation, entry listing, roaster/bean-name autocomplete,
+  "rate a previous bean" endpoint.
+- Frontend: React + Tailwind app, mobile-first, bottom tab bar (Home/History/Insights/Export).
+- New Entry flow, History list, Rate a Previous Bean flow.
+- Project docs: README, LICENSE (MIT), CHANGELOG, CLAUDE.md.
+- Repo scaffolding: Docker/Compose, GHCR publish workflow, .env.example.
+
+### Changed
+- Roadmap: self-hosted Unraid template noted under 0.4.0, data export/import (JSON)
+  added as 1.10.0, "Future ideas" section added for the Unraid CA feed and Proxmox
+  Helper-Scripts community submissions.
+
+### Fixed
+- GHCR publish workflow: image tags must be lowercase.

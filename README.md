@@ -6,7 +6,7 @@ read automatically in the background to fill in details like origin, process,
 and roast level, so logging something takes seconds. Over time it builds up
 data on what you actually like.
 
-Screenshot coming once the app has a working UI (milestone 0.1.0).
+![Home screen](docs/screenshot-home.png)
 
 ## AI disclosure
 
@@ -61,7 +61,7 @@ its port to your LAN and don't forward it through your router or firewall.
 
 ## Roadmap
 
-- [ ] 0.1.0 - Foundation (schema, manual entry)
+- [x] 0.1.0 - Foundation (schema, manual entry)
 - [ ] 0.2.0 - AI/OCR extraction loop
 - [ ] 0.3.0 - Insights (stats and charts)
 - [ ] 0.4.0 - Real usage and deployment (Docker, GHCR, self-hosted Unraid template)
