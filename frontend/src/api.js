@@ -17,8 +17,13 @@ export function autocompleteBeanProfiles(query) {
   return request(`/bean-profiles/autocomplete?${params}`)
 }
 
-export function createEntry(data) {
-  return request('/entries', { method: 'POST', body: JSON.stringify(data) })
+export function createEntry(data, photos = []) {
+  const formData = new FormData()
+  formData.append('data', JSON.stringify(data))
+  photos.forEach((file) => formData.append('photos', file))
+  // No Content-Type header here on purpose - the browser sets the correct
+  // multipart boundary itself when the body is a FormData instance.
+  return request('/entries', { method: 'POST', body: formData, headers: {} })
 }
 
 export function listEntries({ q, limit } = {}) {

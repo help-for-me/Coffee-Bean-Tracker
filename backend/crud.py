@@ -34,7 +34,9 @@ def search_bean_profiles(conn: sqlite3.Connection, query: str, limit: int = 10) 
     return [dict(row) for row in rows]
 
 
-def create_entry(conn: sqlite3.Connection, data: EntryCreate) -> int:
+def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool = False) -> int:
+    extraction_status = "pending" if has_photos else "not_applicable"
+    extraction_source = "claude" if has_photos else "manual"
     with conn:
         bean_profile_id = resolve_bean_profile(conn, data.roaster, data.bean_name)
         cursor = conn.execute(
@@ -45,7 +47,7 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate) -> int:
                 origin_country, region, farm_producer, altitude_m, variety, process,
                 co_ferment_status, co_ferment_ingredient, certifications, roast_level,
                 printed_tasting_notes, roast_date, bag_weight_g
-            ) VALUES (?, ?, ?, ?, ?, ?, 'not_applicable', 'manual', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 bean_profile_id,
@@ -54,6 +56,8 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate) -> int:
                 data.entry_date.isoformat() if data.entry_date else None,
                 data.price_paid,
                 data.currency,
+                extraction_status,
+                extraction_source,
                 data.origin_country,
                 data.region,
                 data.farm_producer,
@@ -72,6 +76,65 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate) -> int:
         entry_id = cursor.lastrowid
         _insert_rating(conn, entry_id, data)
     return entry_id
+
+
+def add_entry_photo(conn: sqlite3.Connection, entry_id: int, photo_path: str, upload_order: int) -> int:
+    with conn:
+        cursor = conn.execute(
+            "INSERT INTO entry_photos (entry_id, photo_path, upload_order) VALUES (?, ?, ?)",
+            (entry_id, photo_path, upload_order),
+        )
+    return cursor.lastrowid
+
+
+def apply_extraction_result(conn: sqlite3.Connection, entry_id: int, result: dict) -> None:
+    with conn:
+        conn.execute(
+            """
+            UPDATE entries SET
+                extraction_status = 'complete',
+                extraction_source = 'claude',
+                origin_country = COALESCE(?, origin_country),
+                region = COALESCE(?, region),
+                farm_producer = COALESCE(?, farm_producer),
+                altitude_m = COALESCE(?, altitude_m),
+                variety = COALESCE(?, variety),
+                process = COALESCE(?, process),
+                co_ferment_status = COALESCE(?, co_ferment_status),
+                co_ferment_ingredient = COALESCE(?, co_ferment_ingredient),
+                certifications = COALESCE(?, certifications),
+                roast_level = COALESCE(?, roast_level),
+                printed_tasting_notes = COALESCE(?, printed_tasting_notes),
+                roast_date = COALESCE(?, roast_date),
+                bag_weight_g = COALESCE(?, bag_weight_g),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                result.get("origin_country"),
+                result.get("region"),
+                result.get("farm_producer"),
+                result.get("altitude_m"),
+                result.get("variety"),
+                result.get("process"),
+                result.get("co_ferment_status"),
+                result.get("co_ferment_ingredient"),
+                result.get("certifications"),
+                result.get("roast_level"),
+                result.get("printed_tasting_notes"),
+                result.get("roast_date"),
+                result.get("bag_weight_g"),
+                entry_id,
+            ),
+        )
+
+
+def mark_extraction_failed(conn: sqlite3.Connection, entry_id: int) -> None:
+    with conn:
+        conn.execute(
+            "UPDATE entries SET extraction_status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (entry_id,),
+        )
 
 
 def add_rating(conn: sqlite3.Connection, entry_id: int, data: RatingCreate) -> int:
