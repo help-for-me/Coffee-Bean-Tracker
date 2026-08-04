@@ -14,11 +14,17 @@ logging.basicConfig(level=logging.INFO)
 # when there's no .env file to find.
 load_dotenv()
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from . import database
 from .routers import bean_profiles, entries
+
+FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
 
 @asynccontextmanager
@@ -43,3 +49,19 @@ app.include_router(bean_profiles.router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# Serves the built React app in Docker (frontend/dist doesn't exist in local
+# dev - Vite's own dev server handles that separately). Mounted after the API
+# routers above so specific routes still win over this catch-all. The
+# catch-all itself is needed for client-side routing (e.g. loading /history
+# directly): unrecognized paths fall back to index.html instead of 404ing.
+if FRONTEND_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        candidate = FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")
