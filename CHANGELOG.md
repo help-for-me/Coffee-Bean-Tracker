@@ -7,10 +7,12 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-04
+
 ### Added
-- Exportable application logs (0.6.0): logs now write to a rotating file
-  under the already-mounted `data/` volume (5MB cap, 3 backups) alongside
-  the existing stdout logging, so they survive restarts and are grabbable
+- Exportable application logs: logs now write to a rotating file under
+  the already-mounted `data/` volume (5MB cap, 3 backups) alongside the
+  existing stdout logging, so they survive restarts and are grabbable
   directly from Unraid's file browser instead of the Docker UI's Logs
   panel. Prompted directly by a 0.5.1 test attempt where an extraction
   failure could only be diagnosed via a screenshot conversation.
@@ -28,14 +30,14 @@ This project uses [Semantic Versioning](https://semver.org/).
   everything else, but a typed name is never overwritten.
 - 0.5.1 real-world manual test passed: instant save and correct identity
   resolution confirmed on an actual phone with a real bag. Also confirmed
-  the known exact-match limitation (deferred to 1.2.0's fuzzy matching) -
+  the known exact-match limitation (deferred to 0.8.0's fuzzy matching) -
   the same bag logged under slightly different OCR'd text created a
   second profile instead of merging.
 
 ### Fixed
 - Export tab said "not currently scheduled to a specific milestone" -
   CSV export (alongside XLSX and GitHub backup) now has a real home in
-  1.3.0, so it's actually tracked instead of left as an orphaned gap.
+  1.1.0, so it's actually tracked instead of left as an orphaned gap.
 
 ## [0.4.0] - 2026-08-04
 
@@ -87,7 +89,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - Roadmap: added viewing an entry's uploaded photo(s), and browsing other
-  photos of the same bean for comparison, to 1.1.0 - corrected from an
+  photos of the same bean for comparison, to 0.7.0 - corrected from an
   earlier assumption that the second part needs fuzzy matching (it
   doesn't; `bean_profile_id` already groups entries exactly). Added
   MAJOR 3 (iOS offline-first companion app) and MAJOR 4 (on-device AI/OCR)
@@ -118,7 +120,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 - Photo upload on New Entry, with instant save and background extraction
   (`extraction_status`: pending -> complete/failed, never stuck).
 - `ClaudeExtractor` using the Anthropic API, plus a swappable factory
-  (Ollama reserved for 1.6.0).
+  (Ollama reserved for 1.3.0).
 - `batch_number` field (bag-printed roast/lot number), extracted alongside
   the other bag-printed attributes and typeable manually.
 - `ROADMAP.md` with full per-milestone detail (deployment specifics,
@@ -163,7 +165,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - Roadmap: self-hosted Unraid template noted under 0.4.0, data export/import (JSON)
-  added as 1.10.0, "Future ideas" section added for the Unraid CA feed and Proxmox
+  added as 1.7.0, "Future ideas" section added for the Unraid CA feed and Proxmox
   Helper-Scripts community submissions.
 
 ### Fixed

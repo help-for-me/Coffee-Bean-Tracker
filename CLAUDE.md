@@ -21,8 +21,9 @@ logged in ROADMAP.md, not fixed immediately - the 0.2.1 patch (fixed
 process/region/variety confusion right away) was the exception while
 extraction accuracy was still actively being stabilized, not the standing
 policy. From here on, prompt changes get consolidated into a single pass
-during 1.x.x (see the known-issues list under 1.1.0 in ROADMAP.md) instead
-of being made piecemeal every time a new bag turns up a small confusion.
+during 0.7.0 - Fixing wrong data (see the known-issues list there in
+ROADMAP.md) instead of being made piecemeal every time a new bag turns up
+a small confusion.
 
 ## No emojis
 

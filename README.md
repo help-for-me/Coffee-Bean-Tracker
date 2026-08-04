@@ -39,7 +39,7 @@ adjust as needed.
 
 | Variable | Description | Default |
 |---|---|---|
-| `EXTRACTOR_PROVIDER` | Which vision extractor fills in bag details from photos. `claude` for now; `ollama` arrives in milestone 1.6.0. | `claude` |
+| `EXTRACTOR_PROVIDER` | Which vision extractor fills in bag details from photos. `claude` for now; `ollama` arrives in milestone 1.3.0. | `claude` |
 | `CLAUDE_MODEL` | Claude model used for photo extraction. | `claude-haiku-4-5-20251001` |
 | `ANTHROPIC_API_KEY` | Your Anthropic API key. Only used for photo extraction. | none |
 | `APP_PORT` | Port the app listens on. | `8000` |
@@ -49,7 +49,7 @@ adjust as needed.
 | `RECENT_WINDOW_COUNT` | How many entries count as "recent" for insights. | `10` |
 
 A few more variables (for the local XLSX and GitHub backup exports) are
-reserved for milestone 1.3.0 and aren't used yet. They're listed, commented
+reserved for milestone 1.1.0 and aren't used yet. They're listed, commented
 out, in `.env.example`.
 
 ## Deployment note
@@ -70,18 +70,18 @@ criteria.
 - [x] 0.3.0 - Deploy on the primary Docker host (Docker, GHCR)
 - [x] 0.4.0 - Insights (stats and charts)
 - [x] 0.5.0 - Photo-first identity
-- [ ] 0.6.0 - Exportable application logs
+- [x] 0.6.0 - Exportable application logs
+- [ ] 0.7.0 - Fixing wrong data
+- [ ] 0.8.0 - Fuzzy repurchase matching
+- [ ] 0.9.0 - AI narrative insights
 - [ ] 1.0.0 - Stable
-- [ ] 1.1.0 - Fixing wrong data
-- [ ] 1.2.0 - Fuzzy repurchase matching
-- [ ] 1.3.0 - Data backup sinks
-- [ ] 1.4.0 - AI narrative insights
-- [ ] 1.5.0 - Richer browsing (filters, attribute switcher)
-- [ ] 1.6.0 - Ollama provider
-- [ ] 1.7.0 - Settings UI
-- [ ] 1.8.0 - Multi-user/auth
-- [ ] 1.9.0 - Visual design pass
-- [ ] 1.10.0 - Data export/import
+- [ ] 1.1.0 - Data backup sinks
+- [ ] 1.2.0 - Richer browsing (filters, attribute switcher)
+- [ ] 1.3.0 - Ollama provider
+- [ ] 1.4.0 - Settings UI
+- [ ] 1.5.0 - Multi-user/auth
+- [ ] 1.6.0 - Visual design pass
+- [ ] 1.7.0 - Data export/import
 - [ ] 2.0.0 - Blank slate
 - [ ] 3.0.0 - iOS offline-first companion app (concept)
 - [ ] 4.0.0 - On-device AI/OCR (concept)

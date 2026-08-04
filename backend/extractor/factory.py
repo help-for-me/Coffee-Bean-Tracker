@@ -9,5 +9,5 @@ def get_extractor() -> BeanExtractor:
     if provider == "claude":
         return ClaudeExtractor()
     if provider == "ollama":
-        raise NotImplementedError("Ollama extraction arrives in milestone 1.6.0")
+        raise NotImplementedError("Ollama extraction arrives in milestone 1.3.0")
     raise ValueError(f"Unknown EXTRACTOR_PROVIDER: {provider}")

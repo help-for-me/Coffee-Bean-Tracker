@@ -21,6 +21,12 @@ answer, not a gap.
 MAJOR bump.** Automated tests (pytest) get written alongside each patch,
 not as a separate step - they cover pure logic, not UI flows.
 
+**MAJOR 0 stays open past 1.0.0 existing.** 0.7.0-0.9.0 sit numerically
+before 1.0.0 but don't wait on it or block it - 1.0.0 is a real-world
+observation checkpoint (see below) that runs in parallel with, not ahead
+of, continued feature work. "Stable" is a confidence checkpoint to tag
+whenever it's earned, not a gate the rest of development sits behind.
+
 ---
 
 ## MAJOR 0 - Building the MVP (pre-release)
@@ -119,13 +125,13 @@ lose data.
 polish) was retired as its own milestone: 0.3.0 is functional as-is, and
 these were nice-to-haves, not blockers. Their two pieces moved to where they
 naturally fit long-term - the Unraid template into "Future ideas" below, and
-mobile/front-screen polish folded into 1.9.0, which already covers general
+mobile/front-screen polish folded into 1.6.0, which already covers general
 UI polish.
 
 ### 0.4.0 - Insights ✅ shipped 2026-08-04
 Deterministic stats engine + fixed charts, built on real data from 0.1.0
 (manual entry) and 0.2.0 (extraction). No AI-generated narrative summary
-yet (that's 1.4.0) - just the charts and numbers.
+yet (that's 0.9.0) - just the charts and numbers.
 
 - Rolling average score by month
 - Favourite processes, origin countries, and tasting notes - "favourite"
@@ -140,7 +146,7 @@ yet (that's 1.4.0) - just the charts and numbers.
   down across repeat entries
 - "Recent" window: compare last 4 months vs. last 10 entries, whichever has
   more rated entries (`RECENT_WINDOW_MONTHS` / `RECENT_WINDOW_COUNT` env
-  vars, fixed until the 1.7.0 Settings UI). Only applies once there's at
+  vars, fixed until the 1.4.0 Settings UI). Only applies once there's at
   least 4 months of history *and* at least 10 entries - a "Recent"/"All
   time" toggle only appears once it does; before that, everything is
   all-time.
@@ -157,7 +163,7 @@ framework dependency) + `GET /insights`. Frontend: a generalized
 hand-rolled inline-SVG bar chart (`RankedScoreChart`, reused for process/
 origin/tasting-note) and a line chart for the monthly trend - no charting
 library, consistent with staying dependency-light and with "plain,
-functional styling until 1.9.0." Verified in a real browser against
+functional styling until 1.6.0." Verified in a real browser against
 seeded data (multiple processes, origins, tasting notes including a
 dash-delimited bag, multiple months, a repurchased bean) - no console
 errors, both toggle states checked.
@@ -190,11 +196,11 @@ not a small tweak:
   the router - cafe cups always need it typed (nothing printed to
   photograph for identity), matching the New Entry form's client-side
   check.
-- **Still open, deferred to 1.2.0 (fuzzy repurchase matching):** identity
+- **Still open, deferred to 0.8.0 (fuzzy repurchase matching):** identity
   resolution reuses the existing exact/case-insensitive match - if
   extraction returns "Detour Coffee" and an existing profile says "Detour
   Coffee Roasters," today that creates a second profile rather than
-  merging. Real fuzzy matching arrives with 1.2.0, shared with the manual
+  merging. Real fuzzy matching arrives with 0.8.0, shared with the manual
   autocomplete's version of the same problem.
 - Manual typing stays available regardless (still the only option for
   cafe cups, and always the fast path when someone already knows the
@@ -214,24 +220,77 @@ resolved it ("Monogram Coffee — Jairo Aroila"). The third check - links
 to an existing profile on a repeat instead of creating a duplicate -
 confirmed the known gap already noted above: this bag had been logged
 before under slightly different text ("Monogram" / "Jario Arcila"), and
-since identity resolution is exact-text match only until 1.2.0, it
+since identity resolution is exact-text match only until 0.8.0, it
 created a second profile rather than merging. Expected, not a new defect
 - accepted as a pass since 0.5.0 never claimed to solve fuzzy matching,
 just photo-first identity.
 
-### 0.6.0 - Exportable application logs
+### 0.6.0 - Exportable application logs ✅ shipped 2026-08-04
 **High priority**, prompted by the 0.5.1 test attempt: extraction failed
 and the only way to diagnose it was a screenshot conversation, not an
 actual error. A real, buildable capability (not an observation period),
 so it gets its own MAJOR-0 minor version rather than sitting as a
-sub-item under 1.0.0's tagging cycle - and it belongs *before* 1.0.1's
-real-world-use period below, so that period actually benefits from it.
+sub-item under 1.0.0's tagging cycle.
 
 Write logs to a file under the already-mounted `data/` volume (not just
 Docker's ephemeral log buffer), so they survive restarts and are
 grabbable directly from Unraid's file browser - the same access pattern
 already used for the SQLite DB and photos - without going through the
 Docker UI's Logs panel each time.
+
+### 0.7.0 - Fixing wrong data
+Extraction retry + a real edit/delete UI for saved entries and ratings.
+High priority - since "fast one-way log" from 0.1.0 means there's
+currently no way to correct a mistake, this comes right after 0.6.0's
+logging infra rather than waiting on 1.0.0's real-world-use observation
+period to finish first (that period runs in parallel, not ahead of this).
+Also where viewing every rating logged against an entry (not just the
+latest) belongs, per earlier discussion.
+
+- **View the uploaded photo(s) on Entry Detail.** The photo that was
+  actually submitted for an entry should be viewable there, not just the
+  fields extracted from it - useful for checking a field against the bag
+  by eye when extraction looks off.
+- **Show photos from other entries of the same bean, for comparison** (in
+  case one photo is blurry/bad and a past one is clearer). This turned out
+  not to need the fuzzy matching 0.8.0 is for - `entries.bean_profile_id`
+  already groups entries by an exact (case-insensitive) match on
+  roaster + bean name since 0.1.0, so "other entries with this
+  bean_profile_id" is a plain join, available today.
+- **Re-run AI extraction from Entry Detail.** A button that re-triggers
+  `run_extraction` for an entry using its own saved photo(s) - covers
+  cases where a prompt fix (like 0.2.1) or a retry might get a better
+  result the second time. Available today using just that entry's photos.
+  Extending it to also consider photos from *other* bean profiles the
+  system suspects are the same bean (e.g. "Detour Coffee" vs. "Detour
+  Coffee Roasters") depends on 0.8.0's fuzzy matching - not available
+  until that exists.
+- **Manual field correction UI.** Same screen, the actual edit form for
+  bag-detail fields and ratings referenced at the top of this milestone -
+  AI re-extraction and manual editing are two different ways to fix the
+  same wrong data, both belong here.
+
+**Known extraction accuracy issues, bundled here instead of fixed
+piecemeal** (see CLAUDE.md's "Extraction prompt changes" policy) - one
+consolidated prompt-engineering pass covers all of these together:
+- Bilingual packaging text (e.g. "Whole Bean Coffee / Grains de café" on
+  a Canadian bag) leaking into `printed_tasting_notes` instead of being
+  recognized as a product-type label and excluded.
+
+### 0.8.0 - Fuzzy repurchase matching
+The 0.1.0 autocomplete only does exact/prefix text matches. High priority.
+
+### 0.9.0 - AI narrative insights
+`InsightGenerator` interface, using the `insight_narratives` table already
+present in the schema. Interprets numbers 0.4.0 (and 1.2.0's statistical
+rigor, once that exists) already computed - never calculates them itself.
+
+- **Flavour/preference recommendations**, explicitly requested: not just
+  narrating "your scores trended up in July" but something closer to "you
+  consistently rate Honey-process Colombian coffees with stone fruit notes
+  highest - look for those" - a genuine recommendation, not just a
+  summary. This is squarely what this milestone is for; the 0.4.0/1.2.0
+  breakdowns are the numbers it interprets, never the other way around.
 
 ---
 
@@ -240,7 +299,9 @@ Docker UI's Logs panel each time.
 ### 1.0.0
 Tagged once 0.5.x's manual test passes. Data integrity and background job
 reliability were already verified in 0.1.0 and 0.2.0, so this cycle only
-covers what genuinely needs the whole system or time to observe.
+covers what genuinely needs the whole system or time to observe. Runs in
+parallel with 0.7.0-0.9.0's continued feature work, not ahead of it - see
+the versioning policy note above.
 
 **`1.0.1` - real-world use (1-2 weeks, spread across real days - not
 batch-logged in one sitting, the point is ordinary daily use):**
@@ -276,47 +337,7 @@ explicitly assumes never happens.
 
 Manual full-system test closes 1.0.x once both `1.0.1` and `1.0.2` report back clean.
 
-### 1.1.0 - Fixing wrong data
-Extraction retry + a real edit/delete UI for saved entries and ratings.
-High priority - first thing after stable, since "fast one-way log" from
-0.1.0 means there's currently no way to correct a mistake. Also where
-viewing every rating logged against an entry (not just the latest) belongs,
-per earlier discussion.
-
-- **View the uploaded photo(s) on Entry Detail.** The photo that was
-  actually submitted for an entry should be viewable there, not just the
-  fields extracted from it - useful for checking a field against the bag
-  by eye when extraction looks off.
-- **Show photos from other entries of the same bean, for comparison** (in
-  case one photo is blurry/bad and a past one is clearer). This turned out
-  not to need the fuzzy matching 1.2.0 is for - `entries.bean_profile_id`
-  already groups entries by an exact (case-insensitive) match on
-  roaster + bean name since 0.1.0, so "other entries with this
-  bean_profile_id" is a plain join, available today.
-- **Re-run AI extraction from Entry Detail.** A button that re-triggers
-  `run_extraction` for an entry using its own saved photo(s) - covers
-  cases where a prompt fix (like 0.2.1) or a retry might get a better
-  result the second time. Available today using just that entry's photos.
-  Extending it to also consider photos from *other* bean profiles the
-  system suspects are the same bean (e.g. "Detour Coffee" vs. "Detour
-  Coffee Roasters") depends on 1.2.0's fuzzy matching - not available
-  until that exists.
-- **Manual field correction UI.** Same screen, the actual edit form for
-  bag-detail fields and ratings referenced at the top of this milestone -
-  AI re-extraction and manual editing are two different ways to fix the
-  same wrong data, both belong here.
-
-**Known extraction accuracy issues, bundled here instead of fixed
-piecemeal** (see CLAUDE.md's "Extraction prompt changes" policy) - one
-consolidated prompt-engineering pass covers all of these together:
-- Bilingual packaging text (e.g. "Whole Bean Coffee / Grains de café" on
-  a Canadian bag) leaking into `printed_tasting_notes` instead of being
-  recognized as a product-type label and excluded.
-
-### 1.2.0 - Fuzzy repurchase matching
-The 0.1.0 autocomplete only does exact/prefix text matches. High priority.
-
-### 1.3.0 - Data backup sinks
+### 1.1.0 - Data backup sinks
 Gives the Export tab (scaffolded since 0.1.0, empty ever since - flagged
 as an unscheduled gap and given a real home here) an actual implementation:
 
@@ -325,21 +346,9 @@ as an unscheduled gap and given a real home here) an actual implementation:
 - `GithubSink` (push to a separate private repo via personal access token)
 
 All three use the `export_log` table already present in the schema since
-0.1.0. Human-readable reports, not a re-import source (see 1.10.0).
+0.1.0. Human-readable reports, not a re-import source (see 1.7.0).
 
-### 1.4.0 - AI narrative insights
-`InsightGenerator` interface, using the `insight_narratives` table already
-present in the schema. Interprets numbers 0.4.0 (and 1.5.0's statistical
-rigor, once that exists) already computed - never calculates them itself.
-
-- **Flavour/preference recommendations**, explicitly requested: not just
-  narrating "your scores trended up in July" but something closer to "you
-  consistently rate Honey-process Colombian coffees with stone fruit notes
-  highest - look for those" - a genuine recommendation, not just a
-  summary. This is squarely what this milestone is for; the 0.4.0/1.5.0
-  breakdowns are the numbers it interprets, never the other way around.
-
-### 1.5.0 - Richer browsing
+### 1.2.0 - Richer browsing
 History filter/sort controls, Insights attribute-switcher dropdown (beyond
 the fixed `process`/origin/tasting-note grouping from 0.4.0) - including
 `brew_style` (Pour Over/Espresso/French Press/Cafe-made/Other, already on
@@ -366,33 +375,33 @@ dimension.
   decision, not just "add error bars" - the two approaches produce
   different rankings, not just different visuals.
 
-### 1.6.0 - Ollama provider
+### 1.3.0 - Ollama provider
 Low priority. `BeanExtractor` was designed swappable from 0.2.0 onward
 specifically for this - a new `ollama_extractor.py` plus one factory
 branch, no redesign needed. Test head-to-head against the 1.0 baseline
 before relying on it.
 
-### 1.7.0 - Settings UI
+### 1.4.0 - Settings UI
 Low priority. Takes over `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` from
 env vars, using the `settings` table already present in the schema.
 
-### 1.8.0 - Multi-user/auth
+### 1.5.0 - Multi-user/auth
 Low priority. Uses the `users` table and nullable `user_id` columns already
 present in the schema since 0.1.0.
 
-### 1.9.0 - Visual design pass
+### 1.6.0 - Visual design pass
 Lowest priority, deliberately last functional-adjacent item. Colors,
 typography, layout polish - no workflow changes. Everything up to this
 point ships with plain, functional default styling only. Includes the
 front-screen/mobile polish originally scoped as 0.3.1, based on actual
 day-to-day phone use against the real deployment.
 
-### 1.10.0 - Data export/import
+### 1.7.0 - Data export/import
 JSON round-trip backup, for restoring or moving to a new install - not
 CSV/XLSX. An entry can have several ratings, and that one-to-many
 relationship doesn't flatten into rows and columns without ambiguity -
 JSON keeps the structure exact so a restore is reliable. CSV (MVP) and
-XLSX (1.3.0) stay as human-readable reports for opening in a spreadsheet,
+XLSX (1.1.0) stay as human-readable reports for opening in a spreadsheet,
 not as a re-import source.
 
 ---
@@ -444,7 +453,7 @@ iOS app would:
   away from home, phone on cellular, etc).
 - Cache Insights data for offline viewing.
 
-Depends on 1.10.0 (JSON export/import) existing first as the natural
+Depends on 1.7.0 (JSON export/import) existing first as the natural
 sync payload shape, and on the rest of MAJOR 1 being stable before taking
 on a second client.
 
