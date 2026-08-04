@@ -164,7 +164,7 @@ errors, both toggle states checked.
 
 Manual test (passed): confirmed accurate against real entries.
 
-### 0.5.0 - Photo-first identity ✅ built 2026-08-04 (0.5.1 below closes it)
+### 0.5.0 - Photo-first identity ✅ shipped 2026-08-04
 Attaching a photo should be enough on its own - typing the roaster and bean
 name becomes optional instead of required, and extraction fills them in
 too, not just the surrounding details. This is a real architecture change,
@@ -207,19 +207,17 @@ verified in a real browser (History and Entry Detail correctly
 distinguish resolved / still-identifying / failed-to-identify states, New
 Entry's validation and hint text match the backend rule).
 
-**0.5.1 is reserved for the real-world manual test** (attach a photo with
-no typed roaster/bean name on an actual phone, confirm the entry saves
-instantly anyway, confirm the name shows up correctly once extraction
-resolves it, confirm it correctly links to an existing bean profile on a
-repeat instead of creating a duplicate) and whatever it turns up - a
-deliberate split from every prior milestone, since this one touches live
-production data with a real architecture change, and the risk profile is
-different enough to warrant separating "built and deployed" from
-"confirmed working on a real device."
-
-**0.5.1 status: not started.** Not scheduled to a date - waiting on your
-availability to actually run the test on a real device. 1.0.0 below
-doesn't tag until this closes.
+**0.5.1 - real-world manual test ✅ passed 2026-08-04.** Tested on an
+actual phone with a real bag (Monogram): entry saved instantly with no
+typed roaster/bean name, and the name showed up correctly once extraction
+resolved it ("Monogram Coffee — Jairo Aroila"). The third check - links
+to an existing profile on a repeat instead of creating a duplicate -
+confirmed the known gap already noted above: this bag had been logged
+before under slightly different text ("Monogram" / "Jario Arcila"), and
+since identity resolution is exact-text match only until 1.2.0, it
+created a second profile rather than merging. Expected, not a new defect
+- accepted as a pass since 0.5.0 never claimed to solve fuzzy matching,
+just photo-first identity.
 
 ---
 
