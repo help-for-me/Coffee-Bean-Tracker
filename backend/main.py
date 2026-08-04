@@ -1,5 +1,14 @@
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+
+# Must run before any other backend module is imported - database.py and
+# photos.py read env vars into module-level constants at import time, so
+# .env has to be loaded into the process first. Docker doesn't need this
+# (docker-compose injects env vars directly), but this is a harmless no-op
+# when there's no .env file to find.
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
