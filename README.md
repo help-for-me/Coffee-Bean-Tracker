@@ -65,7 +65,8 @@ criteria.
 
 - [x] 0.1.0 - Foundation (schema, manual entry)
 - [ ] 0.2.0 - AI/OCR extraction loop
-- [ ] 0.3.0 - Real usage and deployment (Docker, GHCR, self-hosted Unraid template)
+- [ ] 0.3.0 - Deploy on the primary Docker host (Docker, GHCR)
+- [ ] 0.3.1 - Deployment polish (self-hosted Unraid template, mobile use)
 - [ ] 0.4.0 - Insights (stats and charts)
 - [ ] 1.0.0 - Stable
 - [ ] 1.1.0 - Fixing wrong data
@@ -77,18 +78,8 @@ criteria.
 - [ ] 1.7.0 - Settings UI
 - [ ] 1.8.0 - Multi-user/auth
 - [ ] 1.9.0 - Visual design pass
-- [ ] 1.10.0 - Data export/import (JSON round-trip backup, for restoring or moving to a new install)
-- [ ] 2.0.0 - Blank slate - deliberately unplanned, general candidates so far:
-  - Unraid Community Applications feed listing (public template submission)
-  - Proxmox VE Helper-Scripts install script (community submission)
-  - Web-lookup enrichment: describe a bean by text or photo, app searches
-    the internet to fill in the gaps
-
-The 1.10.0 backup format is JSON, not CSV/XLSX. An entry can have several
-ratings, and that one-to-many relationship doesn't flatten into rows and
-columns without ambiguity - JSON keeps the structure exact so a restore is
-reliable. CSV (MVP) and XLSX (1.3.0) stay as human-readable reports for
-opening in a spreadsheet, not as a re-import source.
+- [ ] 1.10.0 - Data export/import
+- [ ] 2.0.0 - Blank slate
 
 ## License
 

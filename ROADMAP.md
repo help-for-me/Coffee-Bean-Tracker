@@ -56,12 +56,14 @@ part only the repo owner can judge.
 Patches: none yet. Will be added here if the manual test above turns up
 anything needing a fix before 0.3.0 starts.
 
-### 0.3.0 - Real usage and deployment
-Swapped ahead of Insights so every milestone after this one gets tested by
-clicking "Update" on the deployed container instead of manually reinstalling
-dependencies on a laptop each time.
+### 0.3.0 - Deploy on the primary Docker host
+Swapped ahead of Insights, and split from polish, so this one thing happens
+first: something real running on real hardware, so every milestone after
+this gets tested by clicking "Update" on the deployed container instead of
+manually reinstalling dependencies on a laptop each time. Host specifics
+(hostname, hardware) live in `private/deployment-notes.md` - gitignored,
+never on GitHub.
 
-**What needs building:**
 - **Finish the Dockerfile.** Currently backend-only (a deliberate stub from
   when the frontend didn't exist yet). Needs a real multi-stage build:
   compile the React app (`npm run build`), serve the static files from the
@@ -71,30 +73,34 @@ dependencies on a laptop each time.
   (`.github/workflows/docker-publish.yml`, fixed for lowercase image
   names). Publishes `ghcr.io/help-for-me/coffee-bean-tracker` on every push
   to `main` and on version tags.
-- **Deploy on Iron** (the primary Docker host):
-  - Specs: Unraid, AMD EPYC 7282 (16-core @ 2.8GHz), 112GB DDR4 ECC RAM,
-    Supermicro H11SSL-i.
-  - Add a container in Unraid's Docker tab pointed at
-    `ghcr.io/help-for-me/coffee-bean-tracker:latest`, using the volumes
-    already defined in `docker-compose.yml` (`./data`, `./photos`,
-    `./exports`).
-  - **LAN-only.** Bind the port to the LAN, no port-forwarding - the app
-    only ever calls out to Claude's API, never accepts inbound traffic from
-    the internet.
-  - "Click Update" works automatically once the container exists - Unraid
-    tracks image digests for any container, no special template required
-    for that part.
+- **Deploy it.** Add a container on the primary Docker host pointed at
+  `ghcr.io/help-for-me/coffee-bean-tracker:latest`, using the volumes
+  already defined in `docker-compose.yml` (`./data`, `./photos`,
+  `./exports`).
+- **LAN-only.** Bind the port to the LAN, no port-forwarding - the app only
+  ever calls out to Claude's API, never accepts inbound traffic from the
+  internet.
+
+Manual test closes 0.3.0: it's actually running on the deployed container
+and reachable on the LAN. Container restart shouldn't lose data.
+
+### 0.3.1 - Deployment polish
+Everything else that makes the deployment nicer to live with, once the
+core of 0.3.0 is already working:
+
 - **Self-hosted Unraid template** (not the public CA feed - see the
   README's "Future ideas" for that). A small XML file in this repo, added
   to Unraid via "Template repositories" pointing at its raw GitHub URL.
   Gives a nicer pre-filled install form, privately, no review process.
+  "Click Update" itself already works as of 0.3.0, for any container
+  regardless of template - this just makes *installing* it nicer.
 - **Front screen polish, mobile use** - a general UI pass once it's
-  actually being used on a phone against a real deployment, not a dev
+  actually being used on a phone against the real deployment, not a dev
   server.
 
-Manual test closes 0.3.x: using it for real, day to day, from a phone,
-against the deployed container on Iron. Container restart shouldn't lose
-data; LAN-only exposure gets confirmed, not just assumed.
+Manual test closes 0.3.1: using it for real, day to day, from a phone,
+against the deployed container. LAN-only exposure gets confirmed, not
+just assumed.
 
 ### 0.4.0 - Insights
 Deterministic stats engine + a couple of fixed charts, built on real data
@@ -173,12 +179,22 @@ typography, layout polish - no workflow changes. Everything up to this
 point ships with plain, functional default styling only.
 
 ### 1.10.0 - Data export/import
-JSON round-trip backup (not CSV/XLSX - see the README for why), for
-restoring or moving to a new install.
+JSON round-trip backup, for restoring or moving to a new install - not
+CSV/XLSX. An entry can have several ratings, and that one-to-many
+relationship doesn't flatten into rows and columns without ambiguity -
+JSON keeps the structure exact so a restore is reliable. CSV (MVP) and
+XLSX (1.3.0) stay as human-readable reports for opening in a spreadsheet,
+not as a re-import source.
 
 ---
 
 ## MAJOR 2 - Blank slate
 
 Deliberately unplanned. General candidates so far, not pinned to any
-specific sub-version - see the README's roadmap section.
+specific sub-version:
+
+- Unraid Community Applications feed listing (public template submission)
+- Proxmox VE Helper-Scripts install script (community submission)
+- Web-lookup enrichment: describe a bean by text or photo, app searches
+  the internet to fill in the gaps - explicitly the lowest priority idea
+  on this whole list
