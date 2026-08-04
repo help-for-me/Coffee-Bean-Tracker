@@ -42,6 +42,7 @@ class EntryCreate(RatingFields):
     roast_date: Optional[date] = None
     bag_weight_g: Optional[int] = None
     batch_number: Optional[str] = None
+    roast_location: Optional[str] = None
 
 
 class RatingCreate(RatingFields):
@@ -52,6 +53,11 @@ class BeanProfileOut(BaseModel):
     id: int
     roaster: str
     bean_name: str
+
+
+class FarmOut(BaseModel):
+    farm_name: str
+    location: Optional[str] = None
 
 
 class RatingOut(RatingFields):
@@ -85,6 +91,8 @@ class EntryOut(BaseModel):
     roast_date: Optional[date]
     bag_weight_g: Optional[int]
     batch_number: Optional[str]
+    roast_location: Optional[str]
+    farms: list[FarmOut]
     ratings: list[RatingOut]
 
 

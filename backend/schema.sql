@@ -39,8 +39,21 @@ CREATE TABLE entries (
     roast_date DATE,
     bag_weight_g INTEGER,
     batch_number TEXT,                -- roast/lot number, when the bag prints one
+    roast_location TEXT,              -- where the ROASTER roasted it, e.g. "Vancouver, BC" — not where it was grown (that's origin_country/region)
 
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Farms/producers contributing to this entry. Most entries have exactly
+-- one row here; a blend that names more than one distinct farm gets one
+-- row per farm. farm_producer on entries stays as a simple summary
+-- (backward-compatible single-value display); this is where each farm's
+-- own location lives when the label prints it.
+CREATE TABLE entry_farms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER NOT NULL REFERENCES entries(id),
+    farm_name TEXT NOT NULL,
+    location TEXT
 );
 
 -- Any number of photos per entry. Table exists from 0.1.0, first used in

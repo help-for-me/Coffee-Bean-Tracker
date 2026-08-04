@@ -111,6 +111,51 @@ def test_list_entries_respects_limit(conn):
     assert len(results) == 2
 
 
+def test_create_entry_stores_roast_location(conn):
+    data = EntryCreate(
+        entry_type="bag", roaster="Pallet Coffee", bean_name="Elkin Guzman", score=7,
+        roast_location="Vancouver, BC",
+    )
+    entry_id = crud.create_entry(conn, data)
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["roast_location"] == "Vancouver, BC"
+
+
+def test_get_entry_farms_defaults_to_empty_list(conn):
+    data = EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    entry_id = crud.create_entry(conn, data)
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["farms"] == []
+
+
+def test_apply_extraction_result_inserts_multiple_farms(conn):
+    data = EntryCreate(entry_type="bag", roaster="Blend Co", bean_name="House Blend", score=7)
+    entry_id = crud.create_entry(conn, data)
+    crud.apply_extraction_result(
+        conn,
+        entry_id,
+        {
+            "farms": [
+                {"farm_name": "El Mirador", "location": "Huila, Colombia"},
+                {"farm_name": "Finca La Esperanza", "location": "Nariño, Colombia"},
+            ]
+        },
+    )
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["farms"] == [
+        {"farm_name": "El Mirador", "location": "Huila, Colombia"},
+        {"farm_name": "Finca La Esperanza", "location": "Nariño, Colombia"},
+    ]
+
+
+def test_apply_extraction_result_skips_farms_without_a_name(conn):
+    data = EntryCreate(entry_type="bag", roaster="Blend Co", bean_name="House Blend 2", score=7)
+    entry_id = crud.create_entry(conn, data)
+    crud.apply_extraction_result(conn, entry_id, {"farms": [{"farm_name": "", "location": "Nowhere"}]})
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["farms"] == []
+
+
 def test_add_rating_appends_second_rating(conn):
     entry_id = crud.create_entry(
         conn, EntryCreate(entry_type="cafe_cup", roaster="Local Cafe", bean_name="House Blend", score=6)

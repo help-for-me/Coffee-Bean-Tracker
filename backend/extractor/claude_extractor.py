@@ -17,6 +17,7 @@ markdown, no preamble, matching this schema:
   "origin_country": string or null,
   "region": string or null,
   "farm_producer": string or null,
+  "farms": [{"farm_name": string, "location": string or null}] or null,
   "altitude_m": number or null,
   "variety": string or null,
   "process": string or null,
@@ -27,7 +28,8 @@ markdown, no preamble, matching this schema:
   "printed_tasting_notes": string or null,
   "roast_date": "YYYY-MM-DD" or null,
   "bag_weight_g": number or null,
-  "batch_number": string or null
+  "batch_number": string or null,
+  "roast_location": string or null
 }
 
 printed_tasting_notes, origin_country, region, process, and roast_level are
@@ -45,7 +47,17 @@ before filing it:
   If only a farm or grower name is printed and no actual region name
   appears anywhere, leave region null rather than guessing.
 - **farm_producer**: the specific farm, mill, or grower name (e.g. "El
-  Mirador", "Elkin Guzman", "Finca La Esperanza").
+  Mirador", "Elkin Guzman", "Finca La Esperanza") — just the name(s), as a
+  simple summary.
+- **farms**: one entry per distinct farm named on the label, each with its
+  own location if the label prints one for that specific farm (most bags
+  name exactly one farm, so this will usually be a single-item list
+  mirroring farm_producer; only list more than one when the label
+  genuinely names multiple distinct farms, e.g. a blend).
+- **roast_location**: where the ROASTER roasted the coffee (e.g. "Roasted
+  in Vancouver, B.C." printed near the roaster's logo) — this is about the
+  roastery's location, never where the coffee was grown. Keep it separate
+  from origin_country/region, which are always about growing origin.
 - **variety**: the coffee plant varietal (e.g. Castillo, Caturra, Bourbon,
   Typica, Geisha/Gesha) — never a process or a region.
 - **process**: ONLY the base processing method (e.g. Washed, Honey,

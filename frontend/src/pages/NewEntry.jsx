@@ -20,6 +20,7 @@ const initialDetails = {
   roast_date: '',
   bag_weight_g: '',
   batch_number: '',
+  roast_location: '',
   price_paid: '',
   currency: 'CAD',
   entry_date: '',
@@ -80,6 +81,7 @@ export default function NewEntry() {
         roast_date: details.roast_date || null,
         bag_weight_g: details.bag_weight_g ? Number(details.bag_weight_g) : null,
         batch_number: details.batch_number || null,
+        roast_location: details.roast_location || null,
         score: Number(score),
         narrative_notes: narrativeNotes.trim() || null,
         ...ratingPayloadFromAdvanced(advanced),
@@ -246,6 +248,7 @@ export default function NewEntry() {
           <Field label="Roast date" type="date" value={details.roast_date} onChange={updateDetail('roast_date')} />
           <Field label="Bag weight (g)" type="number" value={details.bag_weight_g} onChange={updateDetail('bag_weight_g')} />
           <Field label="Batch number" value={details.batch_number} onChange={updateDetail('batch_number')} />
+          <Field label="Roasted in" value={details.roast_location} onChange={updateDetail('roast_location')} />
           <Field label="Price paid" type="number" value={details.price_paid} onChange={updateDetail('price_paid')} />
           <Field label="Currency" value={details.currency} onChange={updateDetail('currency')} />
           <Field label="Entry date" type="date" value={details.entry_date} onChange={updateDetail('entry_date')} />
