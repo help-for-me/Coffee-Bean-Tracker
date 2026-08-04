@@ -168,15 +168,17 @@ Manual test (passed): confirmed accurate against real entries.
 Attaching a photo should be enough on its own - typing the roaster and bean
 name becomes optional instead of required, and extraction fills them in
 too, not just the surrounding details. This is a real architecture change,
-not a small tweak, and needs restructuring when it's tackled:
+not a small tweak:
 
-- **The schema blocks this today.** `entries.bean_profile_id` is
-  `NOT NULL` - every entry must be linked to a specific bean at creation
-  time. Submitting with no typed name means either the FK becomes
-  nullable (and something has to show in History while it's still
-  unresolved), or the app creates a provisional bean profile immediately
-  and merges/corrects it once extraction resolves a real name. Needs a
-  real design decision, not just a code change.
+- **Design decision (made):** `entries.bean_profile_id` stays `NOT NULL`.
+  A provisional bean profile (e.g. "Unidentified #12") gets created
+  immediately when someone saves a photo with no typed name; once
+  extraction resolves a real roaster/bean name, that same row gets
+  renamed in place, or - if the resolved name matches an existing
+  profile (a repeat purchase) - the entry gets re-linked to the existing
+  profile and the placeholder is discarded. Chosen over making the FK
+  nullable specifically to avoid touching every existing join in
+  `crud.py` that currently assumes a profile is always present.
 - **The extraction prompt currently excludes identity on purpose** ("roaster
   and bean_name are NOT part of this extraction... always resolved
   synchronously, never waited on from a photo" - the original 0.2.0
@@ -192,10 +194,16 @@ not a small tweak, and needs restructuring when it's tackled:
   cafe cups with nothing printed to photograph, and always the fast path
   when someone already knows the name).
 
-Manual test closes 0.5.x: attach a photo with no typed roaster/bean name,
-confirm the entry saves instantly anyway, confirm the name shows up
-correctly once extraction resolves it, confirm it correctly links to an
-existing bean profile on a repeat instead of creating a duplicate.
+0.5.0 closes on implementation, not a manual test: built, pytest-covered,
+verified in a real browser, and deployed. **0.5.1 is reserved for the
+real-world manual test** (attach a photo with no typed roaster/bean name
+on an actual phone, confirm the entry saves instantly anyway, confirm the
+name shows up correctly once extraction resolves it, confirm it correctly
+links to an existing bean profile on a repeat instead of creating a
+duplicate) and whatever it turns up - a deliberate split from every prior
+milestone, since this one touches live production data with a real
+architecture change, and the risk profile is different enough to warrant
+separating "built and deployed" from "confirmed working on a real device."
 
 ---
 
