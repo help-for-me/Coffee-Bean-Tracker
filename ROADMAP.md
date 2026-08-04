@@ -84,26 +84,12 @@ never on GitHub.
 Manual test closes 0.3.0: it's actually running on the deployed container
 and reachable on the LAN. Container restart shouldn't lose data.
 
-### 0.3.1 - Deployment polish
-Everything else that makes the deployment nicer to live with, once the
-core of 0.3.0 is already working:
-
-- **Self-hosted Unraid template** (not the public CA feed - see the
-  README's "Future ideas" for that). A small XML file in this repo, added
-  to Unraid via "Template repositories" pointing at its raw GitHub URL.
-  Gives a nicer pre-filled install form, privately, no review process.
-  "Click Update" itself already works as of 0.3.0, for any container
-  regardless of template - this just makes *installing* it nicer. Also
-  fixes the missing WebUI quick-launch button in Unraid's Docker tab -
-  the manually-added container (0.3.0) has no `<WebUI>` field, so Unraid
-  has no URL to launch; the template format has that field built in.
-- **Front screen polish, mobile use** - a general UI pass once it's
-  actually being used on a phone against the real deployment, not a dev
-  server.
-
-Manual test closes 0.3.1: using it for real, day to day, from a phone,
-against the deployed container. LAN-only exposure gets confirmed, not
-just assumed.
+0.3.1 ("Deployment polish" - self-hosted Unraid template, front screen/mobile
+polish) was retired as its own milestone: 0.3.0 is functional as-is, and
+these were nice-to-haves, not blockers. Their two pieces moved to where they
+naturally fit long-term - the Unraid template into "Future ideas" below, and
+mobile/front-screen polish folded into 1.9.0, which already covers general
+UI polish.
 
 ### 0.4.0 - Insights
 Deterministic stats engine + a couple of fixed charts, built on real data
@@ -212,7 +198,9 @@ present in the schema since 0.1.0.
 ### 1.9.0 - Visual design pass
 Lowest priority, deliberately last functional-adjacent item. Colors,
 typography, layout polish - no workflow changes. Everything up to this
-point ships with plain, functional default styling only.
+point ships with plain, functional default styling only. Includes the
+front-screen/mobile polish originally scoped as 0.3.1, based on actual
+day-to-day phone use against the real deployment.
 
 ### 1.10.0 - Data export/import
 JSON round-trip backup, for restoring or moving to a new install - not
@@ -229,6 +217,13 @@ not as a re-import source.
 Deliberately unplanned. General candidates so far, not pinned to any
 specific sub-version:
 
+- Self-hosted Unraid template: a small XML file in this repo, added to
+  Unraid via "Template repositories" pointing at its raw GitHub URL. Gives
+  a nicer pre-filled install form and fixes the missing WebUI quick-launch
+  button (the manually-added container has no `<WebUI>` field for Unraid
+  to build that button from; the template format has one). "Click Update"
+  itself already works today for any container regardless of template -
+  this only makes *installing* it nicer.
 - Unraid Community Applications feed listing (public template submission)
 - Proxmox VE Helper-Scripts install script (community submission)
 - Web-lookup enrichment: describe a bean by text or photo, app searches

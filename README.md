@@ -66,7 +66,6 @@ criteria.
 - [x] 0.1.0 - Foundation (schema, manual entry)
 - [x] 0.2.0 - AI/OCR extraction loop
 - [x] 0.3.0 - Deploy on the primary Docker host (Docker, GHCR)
-- [ ] 0.3.1 - Deployment polish (self-hosted Unraid template, mobile use)
 - [ ] 0.4.0 - Insights (stats and charts)
 - [ ] 0.5.0 - Photo-first identity (attach a photo, no typing required)
 - [ ] 1.0.0 - Stable
