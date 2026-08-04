@@ -7,6 +7,33 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Extraction accuracy (0.2.1, pending a real-photo retest before closing):
+  two real bags exposed field-misfiling, not outright failure - variety and
+  process words ("Castillo", "Honey") landing in `printed_tasting_notes`
+  instead of their own fields, a farm name landing in `region` instead of
+  `farm_producer`, and co-ferment wording getting redundantly appended to
+  `process`. Fixed with a coffee vocabulary reference embedded in the
+  extraction prompt (`backend/extractor/coffee_vocab.py`), explicit
+  field-boundary guidance, and defensive post-processing that strips
+  leaked co-ferment wording and corrects small typos against known terms.
+- Insights tab showed stale placeholder text referencing milestone 0.3.0
+  (from before 0.3.0/0.4.0 were reordered) instead of 0.4.0.
+- README's `PHOTOS_PATH` default was still the old Docker-only absolute
+  path, out of sync with the actual `.env.example` default.
+- Export tab claimed "CSV export arrives in milestone 0.4.0," but CSV
+  export was never actually scoped into 0.4.0 (Insights only covers stats
+  and charts) or any other milestone - placeholder corrected to not claim
+  a specific milestone; needs an actual roadmap slot decided.
+
+### Changed
+- Roadmap: added viewing an entry's uploaded photo(s), and browsing other
+  photos of the same bean for comparison, to 1.1.0 - corrected from an
+  earlier assumption that the second part needs fuzzy matching (it
+  doesn't; `bean_profile_id` already groups entries exactly). Added
+  MAJOR 3 (iOS offline-first companion app) and MAJOR 4 (on-device AI/OCR)
+  as concept-stage future phases.
+
 ## [0.3.0] - 2026-08-04
 
 ### Added
