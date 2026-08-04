@@ -27,6 +27,9 @@ This project uses [Semantic Versioning](https://semver.org/).
 - Roadmap: 0.5.1 (the real-world manual test that closes 0.5.0) marked
   explicitly as not started, not scheduled to a date - waiting on
   availability to test on a real device.
+- Roadmap: added 1.0.3, exportable application logs (high priority) -
+  prompted by a 0.5.1 test attempt where an extraction failure could only
+  be diagnosed via a screenshot conversation instead of an actual error.
 
 ## [0.4.0] - 2026-08-04
 
