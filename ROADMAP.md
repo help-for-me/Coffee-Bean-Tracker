@@ -121,14 +121,20 @@ naturally fit long-term - the Unraid template into "Future ideas" below, and
 mobile/front-screen polish folded into 1.9.0, which already covers general
 UI polish.
 
-### 0.4.0 - Insights (built, manual test pending)
-Deterministic stats engine + a couple of fixed charts, built on real data
-from 0.1.0 (manual entry) and 0.2.0 (extraction). No AI-generated narrative
-summary yet (that's 1.4.0) - just the charts and numbers.
+### 0.4.0 - Insights ✅ shipped 2026-08-04
+Deterministic stats engine + fixed charts, built on real data from 0.1.0
+(manual entry) and 0.2.0 (extraction). No AI-generated narrative summary
+yet (that's 1.4.0) - just the charts and numbers.
 
-- Average score grouped by `process` (fixed for MVP; more attributes and a
-  switcher arrive in 1.5.0)
 - Rolling average score by month
+- Favourite processes, origin countries, and tasting notes - "favourite"
+  = highest average score, same computation as the original "by process"
+  chart, extended to two more dimensions. Tasting notes are free text
+  (comma- or dash-separated depending on the roaster, e.g. "Mango, Papaya"
+  vs. "Hibiscus - Peach - Tropical Fruits") so they're tokenized into
+  individual notes and deduped case-insensitively before ranking.
+  Deliberately ignores co_ferment_status/ingredient for now, per request -
+  that's its own future cross-reference, not folded in here.
 - Most-repurchased/reordered bean profiles, and whether score trends up or
   down across repeat entries
 - "Recent" window: compare last 4 months vs. last 10 entries, whichever has
@@ -138,17 +144,24 @@ summary yet (that's 1.4.0) - just the charts and numbers.
   time" toggle only appears once it does; before that, everything is
   all-time.
 
+Real use case this serves: pull up Insights on your phone in a coffee shop
+and cross-reference a bag's printed origin/process/notes against what's
+scored well for you before. A fancier version - type or scan a specific
+bag's attributes and get an actual predicted score - would need real
+matching/weighting logic across multiple attributes at once; noted as a
+future idea below rather than built now.
+
 Backend: `backend/insights/stats.py` (pure, DB-backed functions, no
-framework dependency) + `GET /insights`. Frontend: hand-rolled inline-SVG
-bar chart (score by process) and line chart (score by month) - no charting
+framework dependency) + `GET /insights`. Frontend: a generalized
+hand-rolled inline-SVG bar chart (`RankedScoreChart`, reused for process/
+origin/tasting-note) and a line chart for the monthly trend - no charting
 library, consistent with staying dependency-light and with "plain,
 functional styling until 1.9.0." Verified in a real browser against
-seeded data (multiple processes, multiple months, a repurchased bean) -
-24 new pytest cases plus a Playwright pass, no console errors, both toggle
-states checked.
+seeded data (multiple processes, origins, tasting notes including a
+dash-delimited bag, multiple months, a repurchased bean) - no console
+errors, both toggle states checked.
 
-Manual test closes 0.4.x: the insights page shows accurate numbers against
-your own real entries.
+Manual test (passed): confirmed accurate against real entries.
 
 ### 0.5.0 - Photo-first identity
 Attaching a photo should be enough on its own - typing the roaster and bean
@@ -297,6 +310,16 @@ specific sub-version:
   (e.g. `2_20260803_1.jpg`), meaningless without cross-referencing the
   database. Include the roaster/bean name or some other identifiable key
   so browsing the photos folder directly on disk is actually useful.
+- Predicted match score for a specific candidate bag: type in (or photo-
+  extract) a bag's origin/process/tasting notes while standing in a shop,
+  and get a single predicted score from combining historical averages
+  across all three - real matching/weighting logic across multiple
+  attributes at once, a step up from the 0.4.0 Insights breakdowns (which
+  only rank one attribute at a time).
+- A "co-fermented vs. not" cross-reference in Insights, alongside the
+  0.4.0 favourite-process breakdown (deliberately excluded from 0.4.0's
+  process ranking, per request, so it doesn't muddy plain process
+  preference).
 
 ---
 

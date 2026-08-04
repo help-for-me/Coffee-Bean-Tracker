@@ -13,9 +13,9 @@ function barPath(x1, x2, y, height, radius) {
   return `M ${x1},${y} L ${x2 - r},${y} Q ${x2},${y} ${x2},${y + r} L ${x2},${y + height - r} Q ${x2},${y + height} ${x2 - r},${y + height} L ${x1},${y + height} Z`
 }
 
-export default function ScoreByProcessChart({ data }) {
+export default function RankedScoreChart({ data, labelKey, emptyMessage, ariaLabel }) {
   if (data.length === 0) {
-    return <p className="text-sm text-gray-500">No rated entries with a known process yet.</p>
+    return <p className="text-sm text-gray-500">{emptyMessage}</p>
   }
 
   const plotWidth = CHART_WIDTH - LEFT_MARGIN - RIGHT_PADDING
@@ -24,7 +24,7 @@ export default function ScoreByProcessChart({ data }) {
   const ticks = [0, 2, 4, 6, 8, 10]
 
   return (
-    <svg viewBox={`0 0 ${CHART_WIDTH} ${height}`} width="100%" role="img" aria-label="Average score by process">
+    <svg viewBox={`0 0 ${CHART_WIDTH} ${height}`} width="100%" role="img" aria-label={ariaLabel}>
       {ticks.map((tick) => {
         const x = LEFT_MARGIN + (tick / MAX_SCORE) * plotWidth
         return (
@@ -37,16 +37,17 @@ export default function ScoreByProcessChart({ data }) {
         )
       })}
       {data.map((row, i) => {
+        const label = row[labelKey]
         const y = i * rowHeight
         const barWidth = (row.avg_score / MAX_SCORE) * plotWidth
         return (
-          <g key={row.process}>
+          <g key={label}>
             <text x={LEFT_MARGIN - 8} y={y + BAR_HEIGHT / 2 + 4} fontSize={11} fill="#374151" textAnchor="end">
-              {row.process}
+              {label}
             </text>
             <path d={barPath(LEFT_MARGIN, LEFT_MARGIN + barWidth, y, BAR_HEIGHT, RADIUS)} fill={ACCENT}>
               <title>
-                {row.process}: {row.avg_score.toFixed(1)} avg ({row.count} rating{row.count === 1 ? '' : 's'})
+                {label}: {row.avg_score.toFixed(1)} avg ({row.count} rating{row.count === 1 ? '' : 's'})
               </title>
             </path>
             <text x={LEFT_MARGIN + barWidth + 6} y={y + BAR_HEIGHT / 2 + 4} fontSize={11} fill="#374151">

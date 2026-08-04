@@ -1,8 +1,15 @@
 import calendar
 import os
+import re
 import sqlite3
 from datetime import date, datetime
 from typing import Optional
+
+# Bag labels list tasting notes with different delimiters depending on the
+# roaster (comma-separated, or dash-separated like "Peach - Tropical
+# Fruits") - split on either, but not on a hyphen embedded in a word (e.g.
+# "Anaerobic-Washed" isn't a note list).
+_NOTE_SPLIT_PATTERN = re.compile(r"\s*[,;/]\s*|\s+-\s+")
 
 
 def _months_ago(months: int, from_date: date) -> date:
@@ -57,6 +64,56 @@ def average_score_by_process(conn: sqlite3.Connection, since: Optional[date] = N
         params.append(since.isoformat())
     sql += " GROUP BY e.process ORDER BY avg_score DESC"
     return [dict(row) for row in conn.execute(sql, params).fetchall()]
+
+
+def average_score_by_origin_country(
+    conn: sqlite3.Connection, since: Optional[date] = None, limit: int = 10
+) -> list[dict]:
+    sql = """
+        SELECT e.origin_country AS origin_country, AVG(r.score) AS avg_score, COUNT(*) AS count
+        FROM ratings r
+        JOIN entries e ON e.id = r.entry_id
+        WHERE e.origin_country IS NOT NULL
+    """
+    params: list = []
+    if since:
+        sql += " AND r.date_entered >= ?"
+        params.append(since.isoformat())
+    sql += " GROUP BY e.origin_country ORDER BY avg_score DESC LIMIT ?"
+    params.append(limit)
+    return [dict(row) for row in conn.execute(sql, params).fetchall()]
+
+
+def _split_notes(raw: str) -> list[str]:
+    return [n.strip() for n in _NOTE_SPLIT_PATTERN.split(raw) if n.strip()]
+
+
+def average_score_by_tasting_note(
+    conn: sqlite3.Connection, since: Optional[date] = None, limit: int = 10
+) -> list[dict]:
+    sql = """
+        SELECT e.printed_tasting_notes AS notes, r.score AS score
+        FROM ratings r
+        JOIN entries e ON e.id = r.entry_id
+        WHERE e.printed_tasting_notes IS NOT NULL
+    """
+    params: list = []
+    if since:
+        sql += " AND r.date_entered >= ?"
+        params.append(since.isoformat())
+    rows = conn.execute(sql, params).fetchall()
+
+    buckets: dict[str, list[float]] = {}
+    for row in rows:
+        for note in _split_notes(row["notes"]):
+            buckets.setdefault(note.title(), []).append(row["score"])
+
+    results = [
+        {"note": note, "avg_score": sum(scores) / len(scores), "count": len(scores)}
+        for note, scores in buckets.items()
+    ]
+    results.sort(key=lambda r: r["avg_score"], reverse=True)
+    return results[:limit]
 
 
 def monthly_rating_trend(conn: sqlite3.Connection) -> list[dict]:
@@ -129,6 +186,14 @@ def get_insights(conn: sqlite3.Connection, today: Optional[date] = None) -> dict
         "by_process": {
             "all_time": average_score_by_process(conn),
             "recent": average_score_by_process(conn, since=since) if since else [],
+        },
+        "by_origin_country": {
+            "all_time": average_score_by_origin_country(conn),
+            "recent": average_score_by_origin_country(conn, since=since) if since else [],
+        },
+        "by_tasting_note": {
+            "all_time": average_score_by_tasting_note(conn),
+            "recent": average_score_by_tasting_note(conn, since=since) if since else [],
         },
         "most_repurchased": {
             "all_time": most_repurchased(conn),

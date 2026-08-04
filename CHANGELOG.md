@@ -7,15 +7,20 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-04
+
 ### Added
-- Insights page (0.4.0, built - manual test against your real data still
-  needed to close it): average score by process, average score by month,
-  and most-repurchased bean profiles with an up/down/flat trend, each with
-  a "Recent" vs. "All time" toggle once there's enough history for a
-  recent window. Backend is a pure, DB-backed stats module
+- Insights page: average score by month, favourite processes/origin
+  countries/tasting notes (ranked by average score - tasting notes are
+  tokenized from free text, comma- or dash-separated depending on the
+  roaster, and deduped case-insensitively), and most-repurchased bean
+  profiles with an up/down/flat trend, each with a "Recent" vs. "All time"
+  toggle once there's enough history for a recent window. Deliberately
+  keeps process separate from co-ferment status for now (own future
+  cross-reference). Backend is a pure, DB-backed stats module
   (`backend/insights/stats.py`) behind `GET /insights`; frontend charts
   are hand-rolled inline SVG (no charting library), verified in a real
-  browser against seeded data.
+  browser against seeded data. Manual test passed against real entries.
 - `roast_location` field (where the roaster roasted it, e.g. "Vancouver,
   BC" - distinct from origin_country/region, which is where it was
   grown), extracted alongside the other bag-printed attributes and

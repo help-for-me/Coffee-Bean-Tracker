@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import MonthlyTrendChart from '../components/MonthlyTrendChart'
+import RankedScoreChart from '../components/RankedScoreChart'
 import RepurchasedList from '../components/RepurchasedList'
-import ScoreByProcessChart from '../components/ScoreByProcessChart'
 import { getInsights } from '../api'
 
 export default function Insights() {
@@ -22,6 +22,8 @@ export default function Insights() {
   if (!insights) return <div className="p-6 text-sm text-gray-500">Loading...</div>
 
   const byProcess = insights.by_process[window_]
+  const byOriginCountry = insights.by_origin_country[window_]
+  const byTastingNote = insights.by_tasting_note[window_]
   const mostRepurchased = insights.most_repurchased[window_]
 
   return (
@@ -50,9 +52,34 @@ export default function Insights() {
         </div>
       )}
 
-      <h2 className="mb-2 text-sm font-semibold text-gray-900">Score by process</h2>
+      <h2 className="mb-2 text-sm font-semibold text-gray-900">Favourite tasting notes</h2>
       <div className="mb-6 rounded-md border border-gray-200 p-3">
-        <ScoreByProcessChart data={byProcess} />
+        <RankedScoreChart
+          data={byTastingNote}
+          labelKey="note"
+          emptyMessage="No printed tasting notes on rated entries yet."
+          ariaLabel="Average score by tasting note"
+        />
+      </div>
+
+      <h2 className="mb-2 text-sm font-semibold text-gray-900">Favourite origin countries</h2>
+      <div className="mb-6 rounded-md border border-gray-200 p-3">
+        <RankedScoreChart
+          data={byOriginCountry}
+          labelKey="origin_country"
+          emptyMessage="No known origin country on rated entries yet."
+          ariaLabel="Average score by origin country"
+        />
+      </div>
+
+      <h2 className="mb-2 text-sm font-semibold text-gray-900">Favourite processes</h2>
+      <div className="mb-6 rounded-md border border-gray-200 p-3">
+        <RankedScoreChart
+          data={byProcess}
+          labelKey="process"
+          emptyMessage="No rated entries with a known process yet."
+          ariaLabel="Average score by process"
+        />
       </div>
 
       <h2 className="mb-2 text-sm font-semibold text-gray-900">Most repurchased</h2>
