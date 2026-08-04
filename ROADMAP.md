@@ -121,7 +121,7 @@ naturally fit long-term - the Unraid template into "Future ideas" below, and
 mobile/front-screen polish folded into 1.9.0, which already covers general
 UI polish.
 
-### 0.4.0 - Insights
+### 0.4.0 - Insights (built, manual test pending)
 Deterministic stats engine + a couple of fixed charts, built on real data
 from 0.1.0 (manual entry) and 0.2.0 (extraction). No AI-generated narrative
 summary yet (that's 1.4.0) - just the charts and numbers.
@@ -134,10 +134,21 @@ summary yet (that's 1.4.0) - just the charts and numbers.
 - "Recent" window: compare last 4 months vs. last 10 entries, whichever has
   more rated entries (`RECENT_WINDOW_MONTHS` / `RECENT_WINDOW_COUNT` env
   vars, fixed until the 1.7.0 Settings UI). Only applies once there's at
-  least 4 months of history *and* at least 10 entries.
+  least 4 months of history *and* at least 10 entries - a "Recent"/"All
+  time" toggle only appears once it does; before that, everything is
+  all-time.
+
+Backend: `backend/insights/stats.py` (pure, DB-backed functions, no
+framework dependency) + `GET /insights`. Frontend: hand-rolled inline-SVG
+bar chart (score by process) and line chart (score by month) - no charting
+library, consistent with staying dependency-light and with "plain,
+functional styling until 1.9.0." Verified in a real browser against
+seeded data (multiple processes, multiple months, a repurchased bean) -
+24 new pytest cases plus a Playwright pass, no console errors, both toggle
+states checked.
 
 Manual test closes 0.4.x: the insights page shows accurate numbers against
-real entries.
+your own real entries.
 
 ### 0.5.0 - Photo-first identity
 Attaching a photo should be enough on its own - typing the roaster and bean

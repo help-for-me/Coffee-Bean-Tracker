@@ -8,6 +8,14 @@ This project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Insights page (0.4.0, built - manual test against your real data still
+  needed to close it): average score by process, average score by month,
+  and most-repurchased bean profiles with an up/down/flat trend, each with
+  a "Recent" vs. "All time" toggle once there's enough history for a
+  recent window. Backend is a pure, DB-backed stats module
+  (`backend/insights/stats.py`) behind `GET /insights`; frontend charts
+  are hand-rolled inline SVG (no charting library), verified in a real
+  browser against seeded data.
 - `roast_location` field (where the roaster roasted it, e.g. "Vancouver,
   BC" - distinct from origin_country/region, which is where it was
   grown), extracted alongside the other bag-printed attributes and
