@@ -6,7 +6,8 @@ Detailed planning for each milestone. For an at-a-glance checklist, see the
 ## Versioning policy
 
 Semantic Versioning (`MAJOR.MINOR.PATCH`):
-- **MAJOR** - a fundamentally new phase (0 = building the MVP, 1 = stable, 2 = blank slate)
+- **MAJOR** - a fundamentally new phase (0 = building the MVP, 1 = stable,
+  2 = blank slate, 3 = iOS offline-first companion app, 4 = on-device AI/OCR)
 - **MINOR** - new functionality added
 - **PATCH** - bug fixes/stabilization, no new features
 
@@ -34,27 +35,46 @@ Manual test (passed): logged an entry by hand, rated it, re-rated a recent
 bean, confirmed everything lists correctly, confirmed foreign keys and
 displayed counts matched `SELECT COUNT(*)` against the actual SQLite file.
 
-### 0.2.0 - AI/OCR extraction loop (built, manual test in progress)
+### 0.2.0 - AI/OCR extraction loop ✅ shipped 2026-08-04
 Photo upload, `ClaudeExtractor`, background-task wiring, `extraction_status`
 lifecycle - fills in bag-printed attributes (origin, process, roast level,
 tasting notes, co-ferment) automatically and correctly files them into the
 entry.
 
-Manual test (in progress): submit a bag photo, confirm it saves instantly,
-confirm the background job correctly fills in and files the details,
-confirm a bad photo fails gracefully. Also confirm background job
-reliability: a blurry photo, a photo with no visible text, no internet, a
-bad API key - `extraction_status` must always resolve (`complete` or
-`failed`, never stuck `pending`), app must never crash.
+Manual test (passed): submitted a real bag photo (Monogram Coffee), confirmed
+instant save, confirmed the background job correctly filled in and filed
+the details, confirmed background job reliability (a missing/bad API key
+resolves to `failed`, never stuck `pending`, app never crashes) - covered
+by automated pytest cases plus a live browser check and a real-key test
+against a real bag.
 
-Already verified (no real API key needed for this part): instant save,
-graceful failure with a missing/bad key, no crash, no console errors -
-covered by 36 automated pytest cases plus a live browser check. What's
-left: confirming *accuracy* against a real photo with a real key - that
-part only the repo owner can judge.
+**0.2.1** - extraction accuracy fix, prompted by a second real bag (Pallet
+Coffee - Elkin Guzman) where the model misfiled words instead of failing
+outright: "Castillo" (variety) and "Honey" (process) both landed in
+`printed_tasting_notes` instead of their own fields, and the farm name
+("El Mirado[r]") landed in `region` instead of `farm_producer`. A separate
+issue on an earlier bag (Monogram) also showed a producer name leaking
+into `region`, and the process field getting "Mango Co-Fermented" appended
+to it redundantly with the dedicated co-ferment fields. Fixed by:
+- Adding a coffee vocabulary reference (common processes, varieties,
+  growing regions - `backend/extractor/coffee_vocab.py`) to the extraction
+  prompt, so the model has known terms to check ambiguous label words
+  against instead of guessing from position on the label alone.
+- Explicit field-boundary guidance in the prompt: region is a sub-national
+  growing area, never a person/farm name; process is the base method only,
+  never co-ferment wording; tasting notes are flavor descriptors only,
+  never variety/process words even when a label line visually groups them
+  together.
+- Defensive post-processing (`normalize_extraction`): strips any
+  co-ferment wording that still leaks into `process`, and corrects small
+  typos in `process`/`variety` against the known-terms list (conservative -
+  a real but uncommon term is left alone, never remapped to the nearest
+  known one).
+- Covered by pytest cases built directly from the two real failures above.
 
-Patches: none yet. Will be added here if the manual test above turns up
-anything needing a fix before 0.3.0 starts.
+Still to confirm: accuracy against a fresh bag photo with the updated
+prompt - the fix above hasn't been manually re-tested against a live photo
+yet.
 
 ### 0.3.0 - Deploy on the primary Docker host
 Swapped ahead of Insights, and split from polish, so this one thing happens
@@ -163,6 +183,17 @@ High priority - first thing after stable, since "fast one-way log" from
 viewing every rating logged against an entry (not just the latest) belongs,
 per earlier discussion.
 
+- **View the uploaded photo(s) on Entry Detail.** The photo that was
+  actually submitted for an entry should be viewable there, not just the
+  fields extracted from it - useful for checking a field against the bag
+  by eye when extraction looks off.
+- **Show photos from other entries of the same bean, for comparison** (in
+  case one photo is blurry/bad and a past one is clearer). This turned out
+  not to need the fuzzy matching 1.2.0 is for - `entries.bean_profile_id`
+  already groups entries by an exact (case-insensitive) match on
+  roaster + bean name since 0.1.0, so "other entries with this
+  bean_profile_id" is a plain join, available today.
+
 ### 1.2.0 - Fuzzy repurchase matching
 The 0.1.0 autocomplete only does exact/prefix text matches. High priority.
 
@@ -233,3 +264,31 @@ specific sub-version:
   (e.g. `2_20260803_1.jpg`), meaningless without cross-referencing the
   database. Include the roaster/bean name or some other identifiable key
   so browsing the photos folder directly on disk is actually useful.
+
+---
+
+## MAJOR 3 - iOS offline-first companion app (concept)
+
+Concept stage only, not scoped in detail - captured here because it's a
+real architectural direction the app should grow toward, not a vague
+someday-idea. The web app is LAN-only by design (see 0.3.0), which means
+it's unreachable whenever the phone isn't on the home network. A native
+iOS app would:
+
+- Queue new entries/ratings locally when the server can't be reached, and
+  sync them once it can (LAN-only, so "can't reach it" will be common -
+  away from home, phone on cellular, etc).
+- Cache Insights data for offline viewing.
+
+Depends on 1.10.0 (JSON export/import) existing first as the natural
+sync payload shape, and on the rest of MAJOR 1 being stable before taking
+on a second client.
+
+## MAJOR 4 - On-device AI/OCR (concept)
+
+Concept stage only, depends on MAJOR 3 (the iOS app) existing first. Once
+there's a native client, explore what bag/menu-photo extraction can happen
+directly on the device (e.g. Apple's Vision/on-device model frameworks)
+instead of round-tripping to Claude's API - most relevant for the
+"phone can't currently reach the server or the internet" case that 3.0.0
+is already solving for.

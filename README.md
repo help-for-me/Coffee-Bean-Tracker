@@ -43,7 +43,7 @@ adjust as needed.
 | `CLAUDE_MODEL` | Claude model used for photo extraction. | `claude-haiku-4-5-20251001` |
 | `ANTHROPIC_API_KEY` | Your Anthropic API key. Only used for photo extraction. | none |
 | `APP_PORT` | Port the app listens on. | `8000` |
-| `PHOTOS_PATH` | Where uploaded photos are stored inside the container. | `/app/data/photos` |
+| `PHOTOS_PATH` | Where uploaded photos are stored, relative to the app's working directory (resolves correctly both locally and in Docker). | `data/photos` |
 | `RECENT_WINDOW_MONTHS` | How many months count as "recent" for insights. | `4` |
 | `RECENT_WINDOW_COUNT` | How many entries count as "recent" for insights. | `10` |
 
@@ -65,6 +65,7 @@ criteria.
 
 - [x] 0.1.0 - Foundation (schema, manual entry)
 - [x] 0.2.0 - AI/OCR extraction loop
+- [x] 0.2.1 - Extraction accuracy fix (process/region/variety confusion)
 - [x] 0.3.0 - Deploy on the primary Docker host (Docker, GHCR)
 - [ ] 0.4.0 - Insights (stats and charts)
 - [ ] 0.5.0 - Photo-first identity (attach a photo, no typing required)
@@ -80,6 +81,8 @@ criteria.
 - [ ] 1.9.0 - Visual design pass
 - [ ] 1.10.0 - Data export/import
 - [ ] 2.0.0 - Blank slate
+- [ ] 3.0.0 - iOS offline-first companion app (concept)
+- [ ] 4.0.0 - On-device AI/OCR (concept)
 
 ## License
 
