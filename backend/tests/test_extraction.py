@@ -40,6 +40,7 @@ def test_run_extraction_success_marks_complete_and_files_fields(conn, tmp_path):
             "printed_tasting_notes": "Cherry, brown sugar",
             "roast_date": None,
             "bag_weight_g": 340,
+            "batch_number": "L-2024-08",
         }
     )
 
@@ -52,6 +53,7 @@ def test_run_extraction_success_marks_complete_and_files_fields(conn, tmp_path):
     assert entry["process"] == "washed"
     assert entry["printed_tasting_notes"] == "Cherry, brown sugar"
     assert entry["bag_weight_g"] == 340
+    assert entry["batch_number"] == "L-2024-08"
 
 
 def test_run_extraction_failure_marks_failed_not_stuck_pending(conn, tmp_path):

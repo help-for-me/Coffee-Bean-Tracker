@@ -23,7 +23,8 @@ markdown, no preamble, matching this schema:
   "certifications": string or null,
   "printed_tasting_notes": string or null,
   "roast_date": "YYYY-MM-DD" or null,
-  "bag_weight_g": number or null
+  "bag_weight_g": number or null,
+  "batch_number": string or null
 }
 
 printed_tasting_notes, origin_country, region, process, and roast_level are
@@ -37,7 +38,8 @@ co_ferment_status is "yes" (e.g. "lychee", "cascara", "wine yeast") — leave
 null if not named or status isn't "yes". Roasters that use co-ferments
 typically disclose the specific ingredient rather than just flagging that
 one was used, so capture it precisely as written (e.g. "honey-processed
-lychee co-ferment"). For everything else, if a field isn't visible or
+lychee co-ferment"). batch_number is a printed roast/lot number or code,
+if the bag has one. For everything else, if a field isn't visible or
 provided, return null. Do not guess."""
 
 

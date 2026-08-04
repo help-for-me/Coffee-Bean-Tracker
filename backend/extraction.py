@@ -16,6 +16,7 @@ def run_extraction(entry_id: int, photo_paths: list[str], extractor: Optional[Be
         active_extractor = extractor or get_extractor()
         result = active_extractor.extract(image_bytes_list)
         crud.apply_extraction_result(conn, entry_id, result)
+        logger.info("Extraction complete for entry %s", entry_id)
     except Exception:
         logger.exception("Extraction failed for entry %s", entry_id)
         crud.mark_extraction_failed(conn, entry_id)

@@ -46,8 +46,8 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool =
                 extraction_status, extraction_source,
                 origin_country, region, farm_producer, altitude_m, variety, process,
                 co_ferment_status, co_ferment_ingredient, certifications, roast_level,
-                printed_tasting_notes, roast_date, bag_weight_g
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                printed_tasting_notes, roast_date, bag_weight_g, batch_number
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 bean_profile_id,
@@ -71,6 +71,7 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool =
                 data.printed_tasting_notes,
                 data.roast_date.isoformat() if data.roast_date else None,
                 data.bag_weight_g,
+                data.batch_number,
             ),
         )
         entry_id = cursor.lastrowid
@@ -107,6 +108,7 @@ def apply_extraction_result(conn: sqlite3.Connection, entry_id: int, result: dic
                 printed_tasting_notes = COALESCE(?, printed_tasting_notes),
                 roast_date = COALESCE(?, roast_date),
                 bag_weight_g = COALESCE(?, bag_weight_g),
+                batch_number = COALESCE(?, batch_number),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """,
@@ -124,6 +126,7 @@ def apply_extraction_result(conn: sqlite3.Connection, entry_id: int, result: dic
                 result.get("printed_tasting_notes"),
                 result.get("roast_date"),
                 result.get("bag_weight_g"),
+                result.get("batch_number"),
                 entry_id,
             ),
         )

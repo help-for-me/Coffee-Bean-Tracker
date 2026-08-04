@@ -1,6 +1,11 @@
+import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
+
+# Without this, our own logger.info() calls (e.g. extraction success/failure)
+# are silently dropped - Python's default log level is WARNING.
+logging.basicConfig(level=logging.INFO)
 
 # Must run before any other backend module is imported - database.py and
 # photos.py read env vars into module-level constants at import time, so

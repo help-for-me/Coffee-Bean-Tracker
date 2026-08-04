@@ -41,6 +41,7 @@ class EntryCreate(RatingFields):
     printed_tasting_notes: Optional[str] = None
     roast_date: Optional[date] = None
     bag_weight_g: Optional[int] = None
+    batch_number: Optional[str] = None
 
 
 class RatingCreate(RatingFields):
@@ -83,6 +84,7 @@ class EntryOut(BaseModel):
     printed_tasting_notes: Optional[str]
     roast_date: Optional[date]
     bag_weight_g: Optional[int]
+    batch_number: Optional[str]
     ratings: list[RatingOut]
 
 
