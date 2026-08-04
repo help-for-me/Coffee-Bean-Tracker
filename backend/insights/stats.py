@@ -201,3 +201,15 @@ def get_insights(conn: sqlite3.Connection, today: Optional[date] = None) -> dict
         },
         "recent_window": recent_window,
     }
+
+
+def insights_for_window(all_insights: dict, window_type: str) -> dict:
+    # Narrows get_insights()'s all_time/recent split down to a single
+    # window - the flat shape InsightGenerator.generate() interprets.
+    return {
+        "monthly_trend": all_insights["monthly_trend"],
+        "by_process": all_insights["by_process"][window_type],
+        "by_origin_country": all_insights["by_origin_country"][window_type],
+        "by_tasting_note": all_insights["by_tasting_note"][window_type],
+        "most_repurchased": all_insights["most_repurchased"][window_type],
+    }

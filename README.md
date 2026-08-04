@@ -72,8 +72,8 @@ criteria.
 - [x] 0.5.0 - Photo-first identity
 - [x] 0.6.0 - Exportable application logs
 - [x] 0.7.0 - Fixing wrong data
-- [ ] 0.8.0 - Fuzzy repurchase matching
-- [ ] 0.9.0 - AI narrative insights
+- [x] 0.8.0 - Fuzzy repurchase matching
+- [x] 0.9.0 - AI narrative insights
 - [ ] 1.0.0 - Stable
 - [ ] 1.1.0 - Data backup sinks
 - [ ] 1.2.0 - Richer browsing (filters, attribute switcher)
