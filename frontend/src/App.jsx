@@ -6,6 +6,7 @@ import Insights from './pages/Insights'
 import Export from './pages/Export'
 import NewEntry from './pages/NewEntry'
 import RatePrevious from './pages/RatePrevious'
+import EntryDetail from './pages/EntryDetail'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/export" element={<Export />} />
             <Route path="/entries/new" element={<NewEntry />} />
             <Route path="/entries/rate" element={<RatePrevious />} />
+            <Route path="/entries/:id" element={<EntryDetail />} />
           </Routes>
         </main>
         <TabBar />

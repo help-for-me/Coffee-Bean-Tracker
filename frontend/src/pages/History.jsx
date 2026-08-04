@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { listEntries } from '../api'
 
 export default function History() {
@@ -20,22 +21,27 @@ export default function History() {
       ) : (
         <ul className="divide-y divide-gray-200">
           {entries.map((entry) => (
-            <li key={entry.id} className="flex items-center justify-between py-3">
-              <div>
-                <p className="font-medium text-gray-900">
-                  <span className="mr-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">
-                    {entry.entry_type === 'bag' ? 'Bag' : 'Cafe'}
-                  </span>
-                  {entry.roaster} — {entry.bean_name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {entry.entry_date ?? entry.date_entered.slice(0, 10)}
-                  {entry.extraction_status === 'pending' ? ' · processing…' : ''}
-                </p>
-              </div>
-              <span className="text-sm font-semibold text-purple-700">
-                {entry.latest_score ?? '—'}
-              </span>
+            <li key={entry.id}>
+              <Link
+                to={`/entries/${entry.id}`}
+                className="flex items-center justify-between py-3"
+              >
+                <div>
+                  <p className="font-medium text-gray-900">
+                    <span className="mr-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">
+                      {entry.entry_type === 'bag' ? 'Bag' : 'Cafe'}
+                    </span>
+                    {entry.roaster} — {entry.bean_name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {entry.entry_date ?? entry.date_entered.slice(0, 10)}
+                    {entry.extraction_status === 'pending' ? ' · processing…' : ''}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-purple-700">
+                  {entry.latest_score ?? '—'}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
