@@ -32,6 +32,77 @@ def test_search_bean_profiles_no_match_returns_empty(conn):
     assert crud.search_bean_profiles(conn, "Zzz") == []
 
 
+def test_search_bean_profiles_excludes_provisional(conn):
+    crud.create_provisional_bean_profile(conn)
+    assert crud.search_bean_profiles(conn, "Unidentified") == []
+
+
+# --- provisional bean profiles (0.5.0 photo-first identity) ---
+
+
+def test_create_provisional_bean_profile_has_unique_placeholder_name(conn):
+    first_id = crud.create_provisional_bean_profile(conn)
+    second_id = crud.create_provisional_bean_profile(conn)
+    first = conn.execute("SELECT roaster, bean_name, is_provisional FROM bean_profiles WHERE id = ?", (first_id,)).fetchone()
+    second = conn.execute("SELECT bean_name FROM bean_profiles WHERE id = ?", (second_id,)).fetchone()
+    assert first["roaster"] == "Unidentified"
+    assert first["bean_name"] == f"#{first_id}"
+    assert first["is_provisional"] == 1
+    assert second["bean_name"] != first["bean_name"]
+
+
+def test_create_provisional_bean_profile_never_reuses_a_row(conn):
+    first_id = crud.create_provisional_bean_profile(conn)
+    second_id = crud.create_provisional_bean_profile(conn)
+    assert first_id != second_id
+    count = conn.execute("SELECT COUNT(*) AS n FROM bean_profiles").fetchone()["n"]
+    assert count == 2
+
+
+def test_resolve_provisional_profile_renames_in_place_when_no_match(conn):
+    provisional_id = crud.create_provisional_bean_profile(conn)
+    resolved_id = crud.resolve_provisional_profile(conn, provisional_id, "Monogram", "Mango")
+    assert resolved_id == provisional_id
+    row = conn.execute(
+        "SELECT roaster, bean_name, is_provisional FROM bean_profiles WHERE id = ?", (provisional_id,)
+    ).fetchone()
+    assert row["roaster"] == "Monogram"
+    assert row["bean_name"] == "Mango"
+    assert row["is_provisional"] == 0
+
+
+def test_resolve_provisional_profile_merges_into_existing_match(conn):
+    existing_id = crud.resolve_bean_profile(conn, "Monogram", "Mango")
+    provisional_id = crud.create_provisional_bean_profile(conn)
+    entry_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster=None, bean_name=None, score=7), has_photos=True
+    )
+    conn.execute("UPDATE entries SET bean_profile_id = ? WHERE id = ?", (provisional_id, entry_id))
+
+    resolved_id = crud.resolve_provisional_profile(conn, provisional_id, "monogram", "MANGO")
+
+    assert resolved_id == existing_id
+    entry = conn.execute("SELECT bean_profile_id FROM entries WHERE id = ?", (entry_id,)).fetchone()
+    assert entry["bean_profile_id"] == existing_id
+    remaining = conn.execute("SELECT id FROM bean_profiles WHERE id = ?", (provisional_id,)).fetchone()
+    assert remaining is None  # placeholder discarded
+
+
+def test_create_entry_without_identity_creates_provisional_profile(conn):
+    data = EntryCreate(entry_type="bag", roaster=None, bean_name=None, score=7)
+    entry_id = crud.create_entry(conn, data, has_photos=True)
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["bean_profile"]["is_provisional"] is True
+    assert entry["bean_profile"]["roaster"] == "Unidentified"
+
+
+def test_create_entry_with_identity_does_not_create_provisional_profile(conn):
+    data = EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    entry_id = crud.create_entry(conn, data)
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["bean_profile"]["is_provisional"] is False
+
+
 def test_create_entry_creates_profile_entry_and_rating(conn):
     data = EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8.5)
     entry_id = crud.create_entry(conn, data)

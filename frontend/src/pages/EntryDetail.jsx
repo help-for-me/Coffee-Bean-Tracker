@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getEntry } from '../api'
+import { beanProfileDisplayName } from '../utils/beanProfileDisplay'
 
 const BAG_DETAIL_FIELDS = [
   ['origin_country', 'Origin country'],
@@ -50,7 +51,7 @@ export default function EntryDetail() {
         {entry.entry_type === 'bag' ? 'Bag' : 'Cafe'}
       </span>
       <h1 className="text-lg font-semibold text-gray-900">
-        {entry.bean_profile.roaster} — {entry.bean_profile.bean_name}
+        {beanProfileDisplayName(entry.bean_profile, entry.extraction_status)}
       </h1>
       {entry.cafe_name && <p className="text-sm text-gray-500">{entry.cafe_name}</p>}
       <p className="mb-4 text-sm text-gray-500">

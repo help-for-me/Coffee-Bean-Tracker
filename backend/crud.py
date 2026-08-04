@@ -20,12 +20,51 @@ def resolve_bean_profile(conn: sqlite3.Connection, roaster: str, bean_name: str)
     return cursor.lastrowid
 
 
+def create_provisional_bean_profile(conn: sqlite3.Connection) -> int:
+    # Always inserts a brand-new row - never reused across entries, unlike
+    # resolve_bean_profile's find-or-create - since two different
+    # unidentified bags shouldn't accidentally merge just because both are
+    # nameless yet. bean_name embeds the row's own id so it's guaranteed
+    # unique and each provisional row is instantly recognizable.
+    cursor = conn.execute("INSERT INTO bean_profiles (roaster, bean_name, is_provisional) VALUES (?, ?, 1)", ("Unidentified", ""))
+    profile_id = cursor.lastrowid
+    conn.execute("UPDATE bean_profiles SET bean_name = ? WHERE id = ?", (f"#{profile_id}", profile_id))
+    return profile_id
+
+
+def resolve_provisional_profile(conn: sqlite3.Connection, provisional_id: int, roaster: str, bean_name: str) -> int:
+    # Called once extraction resolves a real identity for a provisional
+    # profile. Reuses the same exact/case-insensitive match resolve_bean_
+    # profile uses for typed entries - if it matches an existing profile
+    # (a repeat purchase), every entry on the placeholder gets re-linked
+    # there and the placeholder is discarded; otherwise the placeholder
+    # itself becomes the real profile, renamed in place.
+    roaster = roaster.strip()
+    bean_name = bean_name.strip()
+    existing = conn.execute(
+        "SELECT id FROM bean_profiles WHERE roaster = ? COLLATE NOCASE AND bean_name = ? COLLATE NOCASE AND id != ?",
+        (roaster, bean_name, provisional_id),
+    ).fetchone()
+    if existing:
+        conn.execute(
+            "UPDATE entries SET bean_profile_id = ? WHERE bean_profile_id = ?", (existing["id"], provisional_id)
+        )
+        conn.execute("DELETE FROM bean_profiles WHERE id = ?", (provisional_id,))
+        return existing["id"]
+    conn.execute(
+        "UPDATE bean_profiles SET roaster = ?, bean_name = ?, is_provisional = 0 WHERE id = ?",
+        (roaster, bean_name, provisional_id),
+    )
+    return provisional_id
+
+
 def search_bean_profiles(conn: sqlite3.Connection, query: str, limit: int = 10) -> list[dict]:
     pattern = f"{query.strip()}%"
     rows = conn.execute(
         """
-        SELECT id, roaster, bean_name FROM bean_profiles
-        WHERE roaster LIKE ? OR bean_name LIKE ? OR (roaster || ' ' || bean_name) LIKE ?
+        SELECT id, roaster, bean_name, is_provisional FROM bean_profiles
+        WHERE is_provisional = 0
+          AND (roaster LIKE ? OR bean_name LIKE ? OR (roaster || ' ' || bean_name) LIKE ?)
         ORDER BY roaster, bean_name
         LIMIT ?
         """,
@@ -38,7 +77,10 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool =
     extraction_status = "pending" if has_photos else "not_applicable"
     extraction_source = "claude" if has_photos else "manual"
     with conn:
-        bean_profile_id = resolve_bean_profile(conn, data.roaster, data.bean_name)
+        if data.roaster and data.bean_name:
+            bean_profile_id = resolve_bean_profile(conn, data.roaster, data.bean_name)
+        else:
+            bean_profile_id = create_provisional_bean_profile(conn)
         cursor = conn.execute(
             """
             INSERT INTO entries (
@@ -140,6 +182,20 @@ def apply_extraction_result(conn: sqlite3.Connection, entry_id: int, result: dic
                 [(entry_id, farm["farm_name"], farm.get("location")) for farm in farms if farm.get("farm_name")],
             )
 
+        roaster = result.get("roaster")
+        bean_name = result.get("bean_name")
+        if roaster and bean_name:
+            profile_row = conn.execute(
+                """
+                SELECT bp.id, bp.is_provisional FROM entries e
+                JOIN bean_profiles bp ON bp.id = e.bean_profile_id
+                WHERE e.id = ?
+                """,
+                (entry_id,),
+            ).fetchone()
+            if profile_row and profile_row["is_provisional"]:
+                resolve_provisional_profile(conn, profile_row["id"], roaster, bean_name)
+
 
 def mark_extraction_failed(conn: sqlite3.Connection, entry_id: int) -> None:
     with conn:
@@ -181,7 +237,7 @@ def list_entries(
     conn: sqlite3.Connection, query: Optional[str] = None, limit: Optional[int] = None
 ) -> list[dict]:
     sql = """
-        SELECT e.id, bp.roaster, bp.bean_name, e.entry_type, e.entry_date, e.date_entered,
+        SELECT e.id, bp.roaster, bp.bean_name, bp.is_provisional, e.entry_type, e.entry_date, e.date_entered,
                e.extraction_status,
                (SELECT r.score FROM ratings r WHERE r.entry_id = e.id ORDER BY r.date_entered DESC, r.id DESC LIMIT 1) AS latest_score
         FROM entries e
@@ -197,13 +253,17 @@ def list_entries(
         sql += " LIMIT ?"
         params.append(limit)
     rows = conn.execute(sql, params).fetchall()
-    return [dict(row) for row in rows]
+    entries = [dict(row) for row in rows]
+    for entry in entries:
+        entry["is_provisional"] = bool(entry["is_provisional"])
+    return entries
 
 
 def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
     entry_row = conn.execute(
         """
-        SELECT e.*, bp.id AS bp_id, bp.roaster AS bp_roaster, bp.bean_name AS bp_bean_name
+        SELECT e.*, bp.id AS bp_id, bp.roaster AS bp_roaster, bp.bean_name AS bp_bean_name,
+               bp.is_provisional AS bp_is_provisional
         FROM entries e
         JOIN bean_profiles bp ON bp.id = e.bean_profile_id
         WHERE e.id = ?
@@ -225,6 +285,7 @@ def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
         "id": entry.pop("bp_id"),
         "roaster": entry.pop("bp_roaster"),
         "bean_name": entry.pop("bp_bean_name"),
+        "is_provisional": bool(entry.pop("bp_is_provisional")),
     }
     entry["ratings"] = [dict(r) for r in rating_rows]
     entry["farms"] = [dict(f) for f in farm_rows]

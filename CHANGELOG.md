@@ -7,6 +7,17 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Photo-first identity (0.5.0, built - the real-world manual test that
+  closes it is tracked separately as 0.5.1): a bag entry can now be saved
+  with just a photo and no typed roaster/bean name. A provisional bean
+  profile ("Unidentified") gets created immediately and either renamed in
+  place or merged into an existing profile once extraction resolves a
+  real identity - `entries.bean_profile_id` stays `NOT NULL` throughout,
+  no schema constraint change. Cafe cups still always require typed
+  identity. Extraction prompt now attempts roaster/bean name alongside
+  everything else, but a typed name is never overwritten.
+
 ## [0.4.0] - 2026-08-04
 
 ### Added

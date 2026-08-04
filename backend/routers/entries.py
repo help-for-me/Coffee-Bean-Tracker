@@ -21,6 +21,18 @@ async def create_entry(
         entry_data = EntryCreate.model_validate_json(data)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    has_identity = bool(entry_data.roaster and entry_data.bean_name)
+    # A bag with at least one photo can skip typed identity - extraction
+    # resolves it. Cafe cups have nothing printed to photograph for this,
+    # so they always need it typed.
+    identity_from_photo_allowed = entry_data.entry_type == "bag" and bool(photos)
+    if not has_identity and not identity_from_photo_allowed:
+        raise HTTPException(
+            status_code=422,
+            detail="Roaster and bean name are required, unless attaching a photo to a bag entry.",
+        )
+
     conn = database.get_connection()
     try:
         entry_id = crud.create_entry(conn, entry_data, has_photos=bool(photos))

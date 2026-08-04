@@ -21,8 +21,12 @@ class RatingFields(BaseModel):
 
 class EntryCreate(RatingFields):
     entry_type: EntryType
-    roaster: str
-    bean_name: str
+    # Required for cafe cups (nothing else identifies them) and for bags
+    # with no photo. A bag entry with at least one photo and no typed
+    # identity gets a provisional bean profile instead - enforced at the
+    # router, not here, since photos aren't part of this JSON body.
+    roaster: Optional[str] = None
+    bean_name: Optional[str] = None
     cafe_name: Optional[str] = None
     entry_date: Optional[date] = None
     price_paid: Optional[float] = None
@@ -53,6 +57,7 @@ class BeanProfileOut(BaseModel):
     id: int
     roaster: str
     bean_name: str
+    is_provisional: bool
 
 
 class FarmOut(BaseModel):
@@ -100,6 +105,7 @@ class EntrySummary(BaseModel):
     id: int
     roaster: str
     bean_name: str
+    is_provisional: bool
     entry_type: EntryType
     entry_date: Optional[date]
     date_entered: datetime

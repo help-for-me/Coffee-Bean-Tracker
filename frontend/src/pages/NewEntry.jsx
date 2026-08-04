@@ -46,11 +46,14 @@ export default function NewEntry() {
   const photoPreviews = useMemo(() => photos.map((file) => URL.createObjectURL(file)), [photos])
   const removePhoto = (index) => setPhotos((prev) => prev.filter((_, i) => i !== index))
 
+  const hasIdentity = roaster.trim() && beanName.trim()
+  const identityFromPhotoAllowed = entryType === 'bag' && photos.length > 0
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
-    if (!roaster.trim() || !beanName.trim()) {
-      setError('Roaster and bean name are required.')
+    if (!hasIdentity && !identityFromPhotoAllowed) {
+      setError('Roaster and bean name are required, unless attaching a photo to a bag entry.')
       return
     }
     if (score === '' || Number(score) < 0 || Number(score) > 10) {
@@ -61,8 +64,8 @@ export default function NewEntry() {
     try {
       await createEntry({
         entry_type: entryType,
-        roaster: roaster.trim(),
-        bean_name: beanName.trim(),
+        roaster: roaster.trim() || null,
+        bean_name: beanName.trim() || null,
         cafe_name: entryType === 'cafe_cup' && cafeName.trim() ? cafeName.trim() : null,
         entry_date: details.entry_date || null,
         price_paid: details.price_paid ? Number(details.price_paid) : null,
@@ -127,6 +130,11 @@ export default function NewEntry() {
       )}
 
       <div className="mb-4">
+        {entryType === 'bag' && (
+          <p className="mb-1 text-xs text-gray-500">
+            Optional if you attach a bag photo below - extraction will identify it for you.
+          </p>
+        )}
         <BeanProfileAutocomplete
           roaster={roaster}
           beanName={beanName}
