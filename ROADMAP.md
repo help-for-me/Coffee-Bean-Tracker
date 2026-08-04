@@ -217,6 +217,10 @@ production data with a real architecture change, and the risk profile is
 different enough to warrant separating "built and deployed" from
 "confirmed working on a real device."
 
+**0.5.1 status: not started.** Not scheduled to a date - waiting on your
+availability to actually run the test on a real device. 1.0.0 below
+doesn't tag until this closes.
+
 ---
 
 ## MAJOR 1 - Stable
@@ -265,9 +269,14 @@ per earlier discussion.
 The 0.1.0 autocomplete only does exact/prefix text matches. High priority.
 
 ### 1.3.0 - Data backup sinks
-`LocalXlsxSink` (formatted XLSX with Raw Data + Summary sheets) and
-`GithubSink` (push to a separate private repo via personal access token),
-both using the `export_log` table already present in the schema since
+Gives the Export tab (scaffolded since 0.1.0, empty ever since - flagged
+as an unscheduled gap and given a real home here) an actual implementation:
+
+- **CSV export** - the simplest sink, no external dependency, built first.
+- `LocalXlsxSink` (formatted XLSX with Raw Data + Summary sheets)
+- `GithubSink` (push to a separate private repo via personal access token)
+
+All three use the `export_log` table already present in the schema since
 0.1.0. Human-readable reports, not a re-import source (see 1.10.0).
 
 ### 1.4.0 - AI narrative insights

@@ -18,6 +18,16 @@ This project uses [Semantic Versioning](https://semver.org/).
   identity. Extraction prompt now attempts roaster/bean name alongside
   everything else, but a typed name is never overwritten.
 
+### Fixed
+- Export tab said "not currently scheduled to a specific milestone" -
+  CSV export (alongside XLSX and GitHub backup) now has a real home in
+  1.3.0, so it's actually tracked instead of left as an orphaned gap.
+
+### Changed
+- Roadmap: 0.5.1 (the real-world manual test that closes 0.5.0) marked
+  explicitly as not started, not scheduled to a date - waiting on
+  availability to test on a real device.
+
 ## [0.4.0] - 2026-08-04
 
 ### Added
