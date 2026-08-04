@@ -240,12 +240,41 @@ Docker UI's Logs panel each time.
 ### 1.0.0
 Tagged once 0.5.x's manual test passes. Data integrity and background job
 reliability were already verified in 0.1.0 and 0.2.0, so this cycle only
-covers what genuinely needs the whole system or time to observe:
-- `1.0.1` - real-world use: daily use for 1-2 weeks, real bags and cafe cups
-- `1.0.2` - deployment resilience: container restart doesn't lose data,
-  LAN-only exposure confirmed
+covers what genuinely needs the whole system or time to observe.
 
-Manual full-system test closes 1.0.x.
+**`1.0.1` - real-world use (1-2 weeks, spread across real days - not
+batch-logged in one sitting, the point is ordinary daily use):**
+- [ ] At least ~10 real entries logged over the period
+- [ ] At least one bag entry via photo (no typed name) and at least one
+  via manual typing
+- [ ] At least one cafe cup entry
+- [ ] At least one repeat: re-rate a bean you've already logged before
+  (exercises the "rate a previous bean" flow and, incidentally, whatever
+  bean-profile linking behavior it hits)
+- [ ] Note anything that felt slow, confusing, or wrong as it happens -
+  a screenshot and a sentence is enough, doesn't need to be formal
+
+**Report back:** roughly how many entries, confirmation the four boxes
+above got exercised, and either "no issues" or whatever you noted along
+the way (screenshots welcome, same as every other manual test this
+project has done).
+
+**`1.0.2` - deployment resilience:**
+- [ ] Restart the container on Iron (Unraid's stop/start, not a fresh
+  reinstall) and confirm every entry, rating, and photo is still there
+  afterward
+- [ ] Confirm the app is unreachable from outside the LAN - easiest
+  check: turn off WiFi on your phone (cellular only) and confirm the
+  app's URL fails to load
+- [ ] Confirm there's no port-forwarding rule for this app's port on your
+  router (quick look in the router's admin panel)
+
+**Report back:** pass/fail on each of the three boxes above. A fail on
+the LAN-exposure checks is treated as urgent, not routine - it means the
+app is reachable from the internet, which the project's design
+explicitly assumes never happens.
+
+Manual full-system test closes 1.0.x once both `1.0.1` and `1.0.2` report back clean.
 
 ### 1.1.0 - Fixing wrong data
 Extraction retry + a real edit/delete UI for saved entries and ratings.
