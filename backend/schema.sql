@@ -1,9 +1,14 @@
--- The product identity: roaster + name. Always known at submit time (typed
--- or autocompleted) — resolved synchronously, never waits on AI.
+-- The product identity: roaster + name. Normally known at submit time
+-- (typed or autocompleted) and resolved synchronously, never waiting on
+-- AI. Since 0.5.0, a bag entry submitted with only a photo gets a
+-- provisional row here (is_provisional = 1, roaster = "Unidentified")
+-- instead - renamed in place, or merged into an existing profile, once
+-- extraction resolves a real identity.
 CREATE TABLE bean_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     roaster TEXT NOT NULL,
     bean_name TEXT NOT NULL,
+    is_provisional INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

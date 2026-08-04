@@ -1,5 +1,8 @@
 import json
 
+from backend.extraction import run_extraction
+from backend.extractor.base import BeanExtractor
+
 
 def post_entry(client, **fields):
     return client.post("/entries", data={"data": json.dumps(fields)})
@@ -124,3 +127,59 @@ def test_create_entry_with_photo_resolves_to_failed_without_api_key(client):
 def test_create_entry_without_photo_is_not_applicable(client):
     response = post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
     assert response.json()["extraction_status"] == "not_applicable"
+
+
+# --- 0.5.0: photo-first identity ---
+
+
+def test_create_bag_entry_with_photo_and_no_identity_succeeds(client):
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "score": 7})},
+        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["bean_profile"]["is_provisional"] is True
+    assert body["bean_profile"]["roaster"] == "Unidentified"
+
+
+def test_create_bag_entry_with_no_identity_and_no_photo_rejected(client):
+    response = client.post("/entries", data={"data": json.dumps({"entry_type": "bag", "score": 7})})
+    assert response.status_code == 422
+
+
+def test_create_cafe_cup_with_photo_and_no_identity_rejected(client):
+    # Cafe cups have nothing printed to photograph for identity, unlike
+    # bags - typed identity is always required for them.
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "cafe_cup", "score": 7})},
+        files=[("photos", ("menu.jpg", b"fake-image-bytes", "image/jpeg"))],
+    )
+    assert response.status_code == 422
+
+
+class _FakeIdentityExtractor(BeanExtractor):
+    def extract(self, image_bytes_list):
+        return {"roaster": "Monogram", "bean_name": "Mango"}
+
+
+def test_create_bag_entry_with_photo_no_identity_extraction_resolves_it(client):
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "score": 7})},
+        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+    )
+    entry_id = response.json()["id"]
+    assert response.json()["bean_profile"]["is_provisional"] is True
+
+    # TestClient runs the background extraction task synchronously, but
+    # against the real ClaudeExtractor (no API key here) - re-run it here
+    # with a fake extractor to verify the resolution path itself.
+    run_extraction(entry_id, [], extractor=_FakeIdentityExtractor())
+
+    follow_up = client.get(f"/entries/{entry_id}")
+    body = follow_up.json()
+    assert body["bean_profile"]["roaster"] == "Monogram"
+    assert body["bean_profile"]["is_provisional"] is False

@@ -164,46 +164,58 @@ errors, both toggle states checked.
 
 Manual test (passed): confirmed accurate against real entries.
 
-### 0.5.0 - Photo-first identity
+### 0.5.0 - Photo-first identity ✅ built 2026-08-04 (0.5.1 below closes it)
 Attaching a photo should be enough on its own - typing the roaster and bean
 name becomes optional instead of required, and extraction fills them in
 too, not just the surrounding details. This is a real architecture change,
 not a small tweak:
 
-- **Design decision (made):** `entries.bean_profile_id` stays `NOT NULL`.
-  A provisional bean profile (e.g. "Unidentified #12") gets created
-  immediately when someone saves a photo with no typed name; once
-  extraction resolves a real roaster/bean name, that same row gets
-  renamed in place, or - if the resolved name matches an existing
-  profile (a repeat purchase) - the entry gets re-linked to the existing
-  profile and the placeholder is discarded. Chosen over making the FK
-  nullable specifically to avoid touching every existing join in
-  `crud.py` that currently assumes a profile is always present.
-- **The extraction prompt currently excludes identity on purpose** ("roaster
-  and bean_name are NOT part of this extraction... always resolved
-  synchronously, never waited on from a photo" - the original 0.2.0
-  design). That constraint gets lifted here: the prompt needs to also
-  attempt roaster + bean name from the photo.
-- **Overlaps with 1.2.0 (fuzzy repurchase matching).** If extraction
-  returns "Detour Coffee" and an existing bean profile says "Detour
-  Coffee Roasters," this needs the same fuzzy-matching problem 1.2.0
-  already plans to solve, just triggered from the extraction side instead
-  of the autocomplete field. Worth building them together or at least
-  coordinating rather than solving matching twice.
+- **Design decision:** `entries.bean_profile_id` stays `NOT NULL`. A
+  provisional bean profile (roaster "Unidentified", bean_name = its own
+  row id, e.g. "#12") gets created immediately when someone saves a photo
+  with no typed name; once extraction resolves a real roaster/bean name,
+  that same row gets renamed in place, or - if the resolved name matches
+  an existing profile (a repeat purchase) - every entry on the
+  placeholder gets re-linked to the existing profile and the placeholder
+  is discarded. Chosen over making the FK nullable specifically to avoid
+  touching every existing join in `crud.py` that assumes a profile is
+  always present. Migration: `bean_profiles.is_provisional`
+  (`SCHEMA_VERSION` 2), additive only.
+- **The extraction prompt now attempts roaster + bean name too** - lifting
+  the original 0.2.0 constraint that excluded identity entirely. Always
+  attempted, even for entries that already have a typed name; the backend
+  only ever acts on it when the entry's profile is still provisional, so
+  a typed name is never overwritten.
+- **Validation:** identity (typed, or via a bag + photo) is required at
+  the router - cafe cups always need it typed (nothing printed to
+  photograph for identity), matching the New Entry form's client-side
+  check.
+- **Still open, deferred to 1.2.0 (fuzzy repurchase matching):** identity
+  resolution reuses the existing exact/case-insensitive match - if
+  extraction returns "Detour Coffee" and an existing profile says "Detour
+  Coffee Roasters," today that creates a second profile rather than
+  merging. Real fuzzy matching arrives with 1.2.0, shared with the manual
+  autocomplete's version of the same problem.
 - Manual typing stays available regardless (still the only option for
-  cafe cups with nothing printed to photograph, and always the fast path
-  when someone already knows the name).
+  cafe cups, and always the fast path when someone already knows the
+  name).
 
-0.5.0 closes on implementation, not a manual test: built, pytest-covered,
-verified in a real browser, and deployed. **0.5.1 is reserved for the
-real-world manual test** (attach a photo with no typed roaster/bean name
-on an actual phone, confirm the entry saves instantly anyway, confirm the
-name shows up correctly once extraction resolves it, confirm it correctly
-links to an existing bean profile on a repeat instead of creating a
-duplicate) and whatever it turns up - a deliberate split from every prior
-milestone, since this one touches live production data with a real
-architecture change, and the risk profile is different enough to warrant
-separating "built and deployed" from "confirmed working on a real device."
+Built, pytest-covered (15 new cases: provisional creation, in-place
+rename, merge-into-existing, never overwriting a typed identity, router
+validation for all three entry-type/photo/identity combinations), and
+verified in a real browser (History and Entry Detail correctly
+distinguish resolved / still-identifying / failed-to-identify states, New
+Entry's validation and hint text match the backend rule).
+
+**0.5.1 is reserved for the real-world manual test** (attach a photo with
+no typed roaster/bean name on an actual phone, confirm the entry saves
+instantly anyway, confirm the name shows up correctly once extraction
+resolves it, confirm it correctly links to an existing bean profile on a
+repeat instead of creating a duplicate) and whatever it turns up - a
+deliberate split from every prior milestone, since this one touches live
+production data with a real architecture change, and the risk profile is
+different enough to warrant separating "built and deployed" from
+"confirmed working on a real device."
 
 ---
 

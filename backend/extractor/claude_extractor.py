@@ -14,6 +14,8 @@ bag label, a cafe menu board, or an info card. Return ONLY valid JSON, no
 markdown, no preamble, matching this schema:
 
 {
+  "roaster": string or null,
+  "bean_name": string or null,
   "origin_country": string or null,
   "region": string or null,
   "farm_producer": string or null,
@@ -35,6 +37,18 @@ markdown, no preamble, matching this schema:
 printed_tasting_notes, origin_country, region, process, and roast_level are
 the most important fields when available — extract printed_tasting_notes
 exactly as written.
+
+roaster and bean_name identify the product itself, distinct from every
+other field below (which describe the coffee's origin/processing): roaster
+is the roasting company's own brand name (typically the most prominent
+logo/wordmark on the label, e.g. "Stumptown", "Pallet Coffee Roasters" -
+not a growing region or a farm); bean_name is the specific product name
+the roaster gave this coffee (e.g. "Hair Bender", "Elkin Guzman") - this
+is sometimes the same as the grower/farm name (roasters that name single-
+origin lots after the producer) but is still a distinct field from
+farm_producer, since a blend's bean_name usually isn't a person or farm at
+all. Always attempt both from whatever's printed, even for entries that
+already have a name - the caller decides whether to use it.
 
 Specialty bag labels often stack several short lines close together (e.g.
 farm name, then grower name, then a "Variety - Process" line, then a

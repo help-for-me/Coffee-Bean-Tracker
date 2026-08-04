@@ -41,15 +41,21 @@ def test_init_db_migrates_existing_database_without_data_loss(tmp_path, monkeypa
 
     conn = database.get_connection()
     try:
-        columns = {row["name"] for row in conn.execute("PRAGMA table_info(entries)")}
-        assert "roast_location" in columns
+        entry_columns = {row["name"] for row in conn.execute("PRAGMA table_info(entries)")}
+        assert "roast_location" in entry_columns
         tables = {row["name"] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert "entry_farms" in tables
+        profile_columns = {row["name"] for row in conn.execute("PRAGMA table_info(bean_profiles)")}
+        assert "is_provisional" in profile_columns
         row = conn.execute("SELECT farm_producer FROM entries WHERE id = 1").fetchone()
         assert row["farm_producer"] == "Existing Farm"
+        profile_row = conn.execute("SELECT is_provisional FROM bean_profiles WHERE id = 1").fetchone()
+        assert profile_row["is_provisional"] == 0
         assert conn.execute("PRAGMA user_version").fetchone()[0] == database.SCHEMA_VERSION
     finally:
         conn.close()
+
+
 
 
 def test_init_db_is_idempotent_on_already_migrated_database(tmp_path, monkeypatch):

@@ -115,3 +115,58 @@ def test_manual_entry_without_photos_stays_not_applicable(conn):
     entry = crud.get_entry(conn, entry_id)
     assert entry["extraction_status"] == "not_applicable"
     assert entry["extraction_source"] == "manual"
+
+
+# --- 0.5.0: extraction resolving a provisional bean profile ---
+
+
+def test_apply_extraction_result_resolves_provisional_profile(conn):
+    data = EntryCreate(entry_type="bag", roaster=None, bean_name=None, score=7)
+    entry_id = crud.create_entry(conn, data, has_photos=True)
+
+    crud.apply_extraction_result(conn, entry_id, {"roaster": "Monogram", "bean_name": "Mango"})
+
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["bean_profile"]["roaster"] == "Monogram"
+    assert entry["bean_profile"]["bean_name"] == "Mango"
+    assert entry["bean_profile"]["is_provisional"] is False
+
+
+def test_apply_extraction_result_merges_provisional_into_existing_profile(conn):
+    crud.resolve_bean_profile(conn, "Monogram", "Mango")
+    data = EntryCreate(entry_type="bag", roaster=None, bean_name=None, score=9)
+    entry_id = crud.create_entry(conn, data, has_photos=True)
+
+    crud.apply_extraction_result(conn, entry_id, {"roaster": "Monogram", "bean_name": "Mango"})
+
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["bean_profile"]["roaster"] == "Monogram"
+    profile_count = conn.execute(
+        "SELECT COUNT(*) AS n FROM bean_profiles WHERE roaster = 'Monogram' AND bean_name = 'Mango'"
+    ).fetchone()["n"]
+    assert profile_count == 1  # no duplicate profile left behind
+
+
+def test_apply_extraction_result_never_overwrites_a_typed_identity(conn):
+    data = EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    entry_id = crud.create_entry(conn, data, has_photos=True)
+
+    # Extraction returning a (wrong) identity must never rename an already-
+    # resolved, manually-typed bean profile.
+    crud.apply_extraction_result(conn, entry_id, {"roaster": "Some Other Roaster", "bean_name": "Other Bean"})
+
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["bean_profile"]["roaster"] == "Stumptown"
+    assert entry["bean_profile"]["bean_name"] == "Hair Bender"
+
+
+def test_apply_extraction_result_leaves_profile_provisional_when_identity_not_found(conn):
+    data = EntryCreate(entry_type="bag", roaster=None, bean_name=None, score=7)
+    entry_id = crud.create_entry(conn, data, has_photos=True)
+
+    # A blurry photo or one with no visible identity text - extraction
+    # completes but returns nothing usable for roaster/bean_name.
+    crud.apply_extraction_result(conn, entry_id, {"origin_country": "Colombia"})
+
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["bean_profile"]["is_provisional"] is True

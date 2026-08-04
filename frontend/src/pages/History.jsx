@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listEntries } from '../api'
+import { beanProfileDisplayName } from '../utils/beanProfileDisplay'
 
 export default function History() {
   const [entries, setEntries] = useState(null)
@@ -31,7 +32,7 @@ export default function History() {
                     <span className="mr-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">
                       {entry.entry_type === 'bag' ? 'Bag' : 'Cafe'}
                     </span>
-                    {entry.roaster} — {entry.bean_name}
+                    {beanProfileDisplayName(entry, entry.extraction_status)}
                   </p>
                   <p className="text-xs text-gray-500">
                     {entry.entry_date ?? entry.date_entered.slice(0, 10)}
