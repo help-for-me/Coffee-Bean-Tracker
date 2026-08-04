@@ -252,8 +252,15 @@ both using the `export_log` table already present in the schema since
 
 ### 1.4.0 - AI narrative insights
 `InsightGenerator` interface, using the `insight_narratives` table already
-present in the schema. Interprets numbers 0.4.0 already computed - never
-calculates them itself.
+present in the schema. Interprets numbers 0.4.0 (and 1.5.0's statistical
+rigor, once that exists) already computed - never calculates them itself.
+
+- **Flavour/preference recommendations**, explicitly requested: not just
+  narrating "your scores trended up in July" but something closer to "you
+  consistently rate Honey-process Colombian coffees with stone fruit notes
+  highest - look for those" - a genuine recommendation, not just a
+  summary. This is squarely what this milestone is for; the 0.4.0/1.5.0
+  breakdowns are the numbers it interprets, never the other way around.
 
 ### 1.5.0 - Richer browsing
 History filter/sort controls, Insights attribute-switcher dropdown (beyond
@@ -269,6 +276,18 @@ dimension.
   note/origin/process), not just one more flat ranked dimension like
   0.4.0's breakdowns. Worth designing together with the attribute
   switcher rather than bolting on separately.
+- **Statistical rigor for the "favourite X" rankings**, flagged as a real
+  gap in 0.4.0's output: a single average score with no sense of spread
+  or sample size is misleading once real data has outliers - e.g. a
+  tasting note that appears once at a 9 currently outranks one that
+  appears ten times averaging 8.5. Options to weigh here: showing a
+  min-max range or standard deviation alongside the average (cheapest,
+  most honest - let the reader judge confidence themselves), or ranking
+  by a lower-confidence-bound score (e.g. mean minus one standard error,
+  or a proper Wilson/Bayesian-average style adjustment) so thin-sample
+  outliers don't visually dominate the top of the chart. Needs a real
+  decision, not just "add error bars" - the two approaches produce
+  different rankings, not just different visuals.
 
 ### 1.6.0 - Ollama provider
 Low priority. `BeanExtractor` was designed swappable from 0.2.0 onward
