@@ -86,33 +86,34 @@ needed a real migration path (previously `init_db()` only ever ran
 in `database.py`, additive only, covered by a migration test that
 simulates the pre-migration schema shape.
 
-### 0.3.0 - Deploy on the primary Docker host
-Swapped ahead of Insights, and split from polish, so this one thing happens
+### 0.3.0 - Deploy on the primary Docker host ✅ shipped 2026-08-04
+Swapped ahead of Insights, and split from polish, so this one thing happened
 first: something real running on real hardware, so every milestone after
 this gets tested by clicking "Update" on the deployed container instead of
 manually reinstalling dependencies on a laptop each time. Host specifics
 (hostname, hardware) live in `private/deployment-notes.md` - gitignored,
 never on GitHub.
 
-- **Finish the Dockerfile.** Currently backend-only (a deliberate stub from
-  when the frontend didn't exist yet). Needs a real multi-stage build:
-  compile the React app (`npm run build`), serve the static files from the
-  same FastAPI container as the API (`StaticFiles` mount, added after the
-  API routers so specific routes still win).
-- **GHCR publish pipeline** - already built and working
+- **Finished the Dockerfile.** Was backend-only (a deliberate stub from
+  when the frontend didn't exist yet); now a real multi-stage build:
+  compiles the React app (`npm run build`), serves the static files from
+  the same FastAPI container as the API (`StaticFiles` mount, added after
+  the API routers so specific routes still win).
+- **GHCR publish pipeline** - built and working
   (`.github/workflows/docker-publish.yml`, fixed for lowercase image
   names). Publishes `ghcr.io/help-for-me/coffee-bean-tracker` on every push
   to `main` and on version tags.
-- **Deploy it.** Add a container on the primary Docker host pointed at
-  `ghcr.io/help-for-me/coffee-bean-tracker:latest`, using the volumes
-  already defined in `docker-compose.yml` (`./data`, `./photos`,
+- **Deployed.** Running on the primary Docker host (Iron, via Unraid)
+  pointed at `ghcr.io/help-for-me/coffee-bean-tracker:latest`, using the
+  volumes already defined in `docker-compose.yml` (`./data`, `./photos`,
   `./exports`).
-- **LAN-only.** Bind the port to the LAN, no port-forwarding - the app only
+- **LAN-only.** Port bound to the LAN, no port-forwarding - the app only
   ever calls out to Claude's API, never accepts inbound traffic from the
   internet.
 
-Manual test closes 0.3.0: it's actually running on the deployed container
-and reachable on the LAN. Container restart shouldn't lose data.
+Manual test (passed): confirmed actually running on the deployed
+container and reachable on the LAN. Confirmed a container restart doesn't
+lose data.
 
 0.3.1 ("Deployment polish" - self-hosted Unraid template, front screen/mobile
 polish) was retired as its own milestone: 0.3.0 is functional as-is, and
@@ -256,7 +257,18 @@ calculates them itself.
 
 ### 1.5.0 - Richer browsing
 History filter/sort controls, Insights attribute-switcher dropdown (beyond
-the fixed `process` grouping from 0.4.0).
+the fixed `process`/origin/tasting-note grouping from 0.4.0) - including
+`brew_style` (Pour Over/Espresso/French Press/Cafe-made/Other, already on
+`ratings` since 0.1.0, unused for insights until now) as a switchable
+dimension.
+
+- **Brew-method-sliced insights**, requested alongside the switcher: not
+  just "favourite tasting notes" but "favourite tasting notes *when
+  brewed as Espresso*" - the same bean can taste different depending on
+  brew method, so this is a real cross-tab (brew method x tasting
+  note/origin/process), not just one more flat ranked dimension like
+  0.4.0's breakdowns. Worth designing together with the attribute
+  switcher rather than bolting on separately.
 
 ### 1.6.0 - Ollama provider
 Low priority. `BeanExtractor` was designed swappable from 0.2.0 onward
