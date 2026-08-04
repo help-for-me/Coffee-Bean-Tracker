@@ -1,5 +1,12 @@
 # Working on this project
 
+## Anthropic API key expiry
+
+The Anthropic API key configured on the Unraid deployment was set on
+2026-08-04 and expires 30 days later (~2026-09-03). If any Unraid/deployment
+work happens on or after 2026-08-29 (25+ days out), remind the user to
+update the key before it expires.
+
 ## Roadmap
 
 Read [ROADMAP.md](ROADMAP.md) for detailed milestone planning (what each

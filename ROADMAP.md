@@ -93,7 +93,10 @@ core of 0.3.0 is already working:
   to Unraid via "Template repositories" pointing at its raw GitHub URL.
   Gives a nicer pre-filled install form, privately, no review process.
   "Click Update" itself already works as of 0.3.0, for any container
-  regardless of template - this just makes *installing* it nicer.
+  regardless of template - this just makes *installing* it nicer. Also
+  fixes the missing WebUI quick-launch button in Unraid's Docker tab -
+  the manually-added container (0.3.0) has no `<WebUI>` field, so Unraid
+  has no URL to launch; the template format has that field built in.
 - **Front screen polish, mobile use** - a general UI pass once it's
   actually being used on a phone against the real deployment, not a dev
   server.
@@ -231,3 +234,7 @@ specific sub-version:
 - Web-lookup enrichment: describe a bean by text or photo, app searches
   the internet to fill in the gaps - explicitly the lowest priority idea
   on this whole list
+- Human-readable photo filenames: currently `{entry_id}_{yyyymmdd}_{upload_order}.jpg`
+  (e.g. `2_20260803_1.jpg`), meaningless without cross-referencing the
+  database. Include the roaster/bean name or some other identifiable key
+  so browsing the photos folder directly on disk is actually useful.
