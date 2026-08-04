@@ -7,6 +7,25 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-04
+
+### Added
+- Multi-stage Dockerfile: compiles the React frontend and serves it from
+  the same FastAPI container as the API.
+- `batch_number` field (bag-printed roast/lot number), extracted alongside
+  the other bag-printed attributes.
+- Entry Detail page: tap an entry in History to see every bag detail
+  (explicit "Not identified" for anything not filled in) and every rating
+  logged against it, not just the latest.
+- Deployed and running on the primary Docker host via Unraid, LAN-only.
+  Confirmed reachable and confirmed data survives a container restart.
+
+### Changed
+- Roadmap: missing Unraid WebUI quick-launch button noted as a 0.3.1 fix
+  (needs the template's `<WebUI>` field, which the manual container setup
+  doesn't have). Human-readable photo filenames and an Anthropic API key
+  expiry reminder added as tracked items.
+
 ## [0.2.0] - 2026-08-04
 
 ### Added
