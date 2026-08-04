@@ -14,6 +14,16 @@ milestone contains, deployment specifics, manual test criteria) before
 starting work on the next milestone. README.md has only the short
 checklist version.
 
+## Extraction prompt changes
+
+Extraction accuracy issues found while testing 0.x (MVP) milestones get
+logged in ROADMAP.md, not fixed immediately - the 0.2.1 patch (fixed
+process/region/variety confusion right away) was the exception while
+extraction accuracy was still actively being stabilized, not the standing
+policy. From here on, prompt changes get consolidated into a single pass
+during 1.x.x (see the known-issues list under 1.1.0 in ROADMAP.md) instead
+of being made piecemeal every time a new bag turns up a small confusion.
+
 ## No emojis
 
 Never use emojis anywhere in this project - UI text, code, commit messages,

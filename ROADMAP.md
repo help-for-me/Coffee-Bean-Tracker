@@ -273,6 +273,13 @@ per earlier discussion.
   AI re-extraction and manual editing are two different ways to fix the
   same wrong data, both belong here.
 
+**Known extraction accuracy issues, bundled here instead of fixed
+piecemeal** (see CLAUDE.md's "Extraction prompt changes" policy) - one
+consolidated prompt-engineering pass covers all of these together:
+- Bilingual packaging text (e.g. "Whole Bean Coffee / Grains de café" on
+  a Canadian bag) leaking into `printed_tasting_notes` instead of being
+  recognized as a product-type label and excluded.
+
 ### 1.2.0 - Fuzzy repurchase matching
 The 0.1.0 autocomplete only does exact/prefix text matches. High priority.
 
