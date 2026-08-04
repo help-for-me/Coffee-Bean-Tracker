@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import MonthlyTrendChart from '../components/MonthlyTrendChart'
+import NarrativeSummary from '../components/NarrativeSummary'
 import RankedScoreChart from '../components/RankedScoreChart'
 import RepurchasedList from '../components/RepurchasedList'
 import { getInsights } from '../api'
@@ -51,6 +52,9 @@ export default function Insights() {
           ))}
         </div>
       )}
+
+      <h2 className="mb-2 text-sm font-semibold text-gray-900">Insights summary</h2>
+      <NarrativeSummary window={window_} />
 
       <h2 className="mb-2 text-sm font-semibold text-gray-900">Favourite tasting notes</h2>
       <div className="mb-6 rounded-md border border-gray-200 p-3">

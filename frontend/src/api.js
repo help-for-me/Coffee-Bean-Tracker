@@ -50,6 +50,16 @@ export function getInsights() {
   return request('/insights')
 }
 
+export function getNarrative(window_) {
+  const params = new URLSearchParams({ window: window_ })
+  return request(`/insights/narrative?${params}`)
+}
+
+export function generateNarrative(window_) {
+  const params = new URLSearchParams({ window: window_ })
+  return request(`/insights/narrative?${params}`, { method: 'POST' })
+}
+
 export function photoUrl(photoId) {
   return `${BASE_URL}/photos/${photoId}`
 }

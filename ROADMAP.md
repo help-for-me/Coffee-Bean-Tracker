@@ -292,10 +292,32 @@ rating, deleted a rating, re-ran extraction, and deleted an entire entry -
 confirming its photo file was actually removed from disk, not just its
 DB row.
 
-### 0.8.0 - Fuzzy repurchase matching
+### 0.8.0 - Fuzzy repurchase matching ✅ shipped 2026-08-04
 The 0.1.0 autocomplete only does exact/prefix text matches. High priority.
 
-### 0.9.0 - AI narrative insights
+Built on stdlib `difflib` (no new dependency) - reuses the same
+`SequenceMatcher.ratio()` approach `claude_extractor.py` already uses for
+vocab correction:
+- **Autocomplete suggestions** (`search_bean_profiles`) fall back to a
+  fuzzy-ranked match (cutoff 0.6) to fill any suggestion slots the
+  prefix-only `LIKE` match leaves empty - catches typos like "Detuor" for
+  "Detour". Zero merge risk, since the user still picks explicitly from
+  the list.
+- **Extraction-resolved identity** (`resolve_provisional_profile`) falls
+  back to a conservative fuzzy match (cutoff 0.85) before creating a new
+  profile - catches OCR typos like the real 0.5.1 case ("Jairo Aroila" vs
+  "Jario Arcila"), the same bag read slightly differently across two
+  photo submissions. Typed-entry identity (`resolve_bean_profile`) stays
+  exact-match only, since autocomplete is already the safety net there
+  and a typed identity is a deliberate action, not an OCR guess.
+
+Pytest-covered (5 new cases, including a same-roaster/different-bean case
+that must NOT auto-merge, to guard against false positives) and verified
+in a real browser - typing a transposed-letter typo ("Detuor Coffee
+Roasters") correctly surfaced the existing "Detour Coffee Roasters"
+profile in New Entry's autocomplete.
+
+### 0.9.0 - AI narrative insights ✅ shipped 2026-08-04
 `InsightGenerator` interface, using the `insight_narratives` table already
 present in the schema. Interprets numbers 0.4.0 (and 1.2.0's statistical
 rigor, once that exists) already computed - never calculates them itself.
@@ -306,6 +328,24 @@ rigor, once that exists) already computed - never calculates them itself.
   highest - look for those" - a genuine recommendation, not just a
   summary. This is squarely what this milestone is for; the 0.4.0/1.2.0
   breakdowns are the numbers it interprets, never the other way around.
+
+Built: `InsightGenerator` abstract base (`backend/insights/base.py`,
+mirrors `BeanExtractor`'s shape) with a `ClaudeInsightGenerator`
+implementation and a `get_generator()` factory (`NARRATIVE_PROVIDER` env
+var, "ollama" reserved for 1.3.0 same as extraction). The prompt
+explicitly requires a recommendation grounded in the highest-scoring
+pattern(s) actually present in the data, not a plain recap. Synchronous
+"Generate summary" button on the Insights page (`POST
+/insights/narrative?window=`) - no background-job plumbing needed, unlike
+photo extraction, since there's no upload request it would otherwise
+block; results cache per time-window in `insight_narratives` and
+`GET /insights/narrative?window=` returns the latest cached summary.
+Pytest-covered (14 new cases: crud caching, a fake-generator unit test
+confirming only the window-scoped stats ever reach the prompt, and
+router-level success/no-API-key-failure cases) and verified in a real
+browser, including the missing-API-key error path (dev has no key,
+matching extraction's established behavior) and, via a mocked network
+response, the successful-generation rendering path.
 
 ---
 

@@ -7,6 +7,7 @@ EntryType = Literal["bag", "cafe_cup"]
 CoFermentStatus = Literal["yes", "no", "unknown"]
 BrewStyle = Literal["Pour Over", "Espresso", "French Press", "Cafe-made", "Other"]
 Repurchase = Literal["yes", "no", "maybe"]
+WindowType = Literal["all_time", "recent"]
 
 
 class RatingFields(BaseModel):
@@ -223,3 +224,10 @@ class InsightsOut(BaseModel):
     by_tasting_note: ByTastingNote
     most_repurchased: MostRepurchased
     recent_window: RecentWindow
+
+
+class InsightNarrativeOut(BaseModel):
+    id: int
+    window_type: WindowType
+    summary_text: str
+    generated_at: datetime

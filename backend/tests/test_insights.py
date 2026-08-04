@@ -10,6 +10,7 @@ from backend.insights.stats import (
     average_score_by_tasting_note,
     compute_recent_cutoff,
     get_insights,
+    insights_for_window,
     monthly_rating_trend,
     most_repurchased,
 )
@@ -285,3 +286,39 @@ def test_get_insights_empty_database(conn):
     assert result["by_tasting_note"]["all_time"] == []
     assert result["most_repurchased"]["all_time"] == []
     assert result["recent_window"]["applicable"] is False
+
+
+# --- insights_for_window (0.9.0 AI narrative insights) ---
+
+
+def test_insights_for_window_flattens_all_time():
+    all_insights = {
+        "monthly_trend": [{"month": "2026-07", "avg_score": 8, "count": 1}],
+        "by_process": {"all_time": [{"process": "Washed", "avg_score": 8, "count": 1}], "recent": []},
+        "by_origin_country": {"all_time": [], "recent": []},
+        "by_tasting_note": {"all_time": [], "recent": []},
+        "most_repurchased": {"all_time": [], "recent": []},
+        "recent_window": {"applicable": False, "cutoff_date": None},
+    }
+    windowed = insights_for_window(all_insights, "all_time")
+    assert windowed == {
+        "monthly_trend": [{"month": "2026-07", "avg_score": 8, "count": 1}],
+        "by_process": [{"process": "Washed", "avg_score": 8, "count": 1}],
+        "by_origin_country": [],
+        "by_tasting_note": [],
+        "most_repurchased": [],
+    }
+    assert "recent_window" not in windowed
+
+
+def test_insights_for_window_picks_recent_slice():
+    all_insights = {
+        "monthly_trend": [],
+        "by_process": {"all_time": [{"process": "Washed"}], "recent": [{"process": "Natural"}]},
+        "by_origin_country": {"all_time": [], "recent": []},
+        "by_tasting_note": {"all_time": [], "recent": []},
+        "most_repurchased": {"all_time": [], "recent": []},
+        "recent_window": {"applicable": True, "cutoff_date": date(2026, 7, 1)},
+    }
+    windowed = insights_for_window(all_insights, "recent")
+    assert windowed["by_process"] == [{"process": "Natural"}]

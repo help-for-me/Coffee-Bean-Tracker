@@ -7,6 +7,30 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-04
+
+### Added
+- AI narrative insights: an "Insights summary" section on the Insights
+  page generates a short, actionable recommendation from your own logged
+  data (e.g. "you consistently rate Honey-process Colombian coffees
+  highest - look for those"), not just a recap of numbers already on the
+  page. Backed by a provider-agnostic `InsightGenerator` interface
+  (`NARRATIVE_PROVIDER` env var, mirrors the extraction provider setup),
+  cached per time-window in the database so it doesn't regenerate on
+  every page load.
+
+## [0.8.0] - 2026-08-04
+
+### Added
+- Fuzzy repurchase matching: typos no longer create duplicate bean
+  profiles or get missed by autocomplete. New Entry's autocomplete now
+  surfaces close matches (not just exact prefixes), and AI extraction
+  correctly merges OCR-typo'd identity (e.g. "Jairo Aroila" vs "Jario
+  Arcila") into the existing profile instead of creating a second one -
+  closing the gap the 0.5.1 real-world test found. Uses a conservative
+  similarity threshold for the automatic merge case specifically, so two
+  different roasters with similar names are never silently combined.
+
 ## [0.7.0] - 2026-08-04
 
 ### Added

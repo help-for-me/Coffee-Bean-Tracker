@@ -1,7 +1,38 @@
+import difflib
 import sqlite3
 from typing import Optional
 
 from .models import EntryCreate, RatingCreate
+
+# Auto-merge cutoff for extraction-resolved identity (0.8.0) - conservative,
+# matching the 0.84 cutoff claude_extractor.py already uses for vocab
+# correction, since a false-positive merge here silently combines two
+# roasters' entries with no undo. Autocomplete suggestions use a looser
+# cutoff since the user still picks explicitly - no merge risk there.
+_FUZZY_MERGE_CUTOFF = 0.85
+_FUZZY_SUGGEST_CUTOFF = 0.6
+
+
+def _fuzzy_match_profile(
+    conn: sqlite3.Connection, roaster: str, bean_name: str, exclude_id: Optional[int], cutoff: float, limit: int
+) -> list[dict]:
+    # Ranks every non-provisional profile (never suggest/merge into an
+    # "Unidentified #N" placeholder) by similarity of "roaster bean_name"
+    # against the target, using stdlib difflib rather than adding a fuzzy-
+    # matching dependency.
+    target = f"{roaster} {bean_name}".strip().lower()
+    rows = conn.execute(
+        "SELECT id, roaster, bean_name FROM bean_profiles WHERE is_provisional = 0" + (" AND id != ?" if exclude_id else ""),
+        (exclude_id,) if exclude_id else (),
+    ).fetchall()
+    scored = []
+    for row in rows:
+        candidate = f"{row['roaster']} {row['bean_name']}".strip().lower()
+        ratio = difflib.SequenceMatcher(None, target, candidate).ratio()
+        if ratio >= cutoff:
+            scored.append((ratio, dict(row)))
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [profile for _, profile in scored[:limit]]
 
 _UPDATABLE_ENTRY_FIELDS = {
     "cafe_name", "entry_date", "price_paid", "currency",
@@ -46,23 +77,33 @@ def create_provisional_bean_profile(conn: sqlite3.Connection) -> int:
 
 def resolve_provisional_profile(conn: sqlite3.Connection, provisional_id: int, roaster: str, bean_name: str) -> int:
     # Called once extraction resolves a real identity for a provisional
-    # profile. Reuses the same exact/case-insensitive match resolve_bean_
-    # profile uses for typed entries - if it matches an existing profile
-    # (a repeat purchase), every entry on the placeholder gets re-linked
-    # there and the placeholder is discarded; otherwise the placeholder
-    # itself becomes the real profile, renamed in place.
+    # profile. Tries an exact/case-insensitive match first (same as
+    # resolve_bean_profile for typed entries); since 0.8.0, falls back to a
+    # conservative fuzzy match to catch OCR typos (e.g. "Jario Arcila" vs
+    # "Jairo Aroila") that would otherwise create a duplicate profile. In
+    # either case, every entry on the placeholder gets re-linked to the
+    # matched profile and the placeholder is discarded; with no match at
+    # all, the placeholder itself becomes the real profile, renamed in
+    # place.
     roaster = roaster.strip()
     bean_name = bean_name.strip()
     existing = conn.execute(
         "SELECT id FROM bean_profiles WHERE roaster = ? COLLATE NOCASE AND bean_name = ? COLLATE NOCASE AND id != ?",
         (roaster, bean_name, provisional_id),
     ).fetchone()
-    if existing:
+    existing_id = existing["id"] if existing else None
+    if existing_id is None:
+        fuzzy = _fuzzy_match_profile(
+            conn, roaster, bean_name, exclude_id=provisional_id, cutoff=_FUZZY_MERGE_CUTOFF, limit=1
+        )
+        if fuzzy:
+            existing_id = fuzzy[0]["id"]
+    if existing_id is not None:
         conn.execute(
-            "UPDATE entries SET bean_profile_id = ? WHERE bean_profile_id = ?", (existing["id"], provisional_id)
+            "UPDATE entries SET bean_profile_id = ? WHERE bean_profile_id = ?", (existing_id, provisional_id)
         )
         conn.execute("DELETE FROM bean_profiles WHERE id = ?", (provisional_id,))
-        return existing["id"]
+        return existing_id
     conn.execute(
         "UPDATE bean_profiles SET roaster = ?, bean_name = ?, is_provisional = 0 WHERE id = ?",
         (roaster, bean_name, provisional_id),
@@ -82,7 +123,23 @@ def search_bean_profiles(conn: sqlite3.Connection, query: str, limit: int = 10) 
         """,
         (pattern, pattern, pattern, limit),
     ).fetchall()
-    return [dict(row) for row in rows]
+    results = [dict(row) for row in rows]
+
+    # 0.8.0: prefix matching alone misses typos (e.g. "Detor" for
+    # "Detour") - fill any remaining suggestion slots with fuzzy matches,
+    # a looser cutoff than auto-merge since the user still picks
+    # explicitly from the list.
+    remaining = limit - len(results)
+    if remaining > 0:
+        seen_ids = {row["id"] for row in results}
+        fuzzy = _fuzzy_match_profile(conn, query, "", exclude_id=None, cutoff=_FUZZY_SUGGEST_CUTOFF, limit=limit)
+        for profile in fuzzy:
+            if profile["id"] not in seen_ids:
+                results.append({**profile, "is_provisional": False})
+                seen_ids.add(profile["id"])
+                if len(results) >= limit:
+                    break
+    return results
 
 
 def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool = False) -> int:
@@ -388,3 +445,27 @@ def delete_rating(conn: sqlite3.Connection, rating_id: int) -> bool:
     with conn:
         cursor = conn.execute("DELETE FROM ratings WHERE id = ?", (rating_id,))
     return cursor.rowcount > 0
+
+
+def get_latest_narrative(conn: sqlite3.Connection, window_type: str) -> Optional[dict]:
+    row = conn.execute(
+        """
+        SELECT id, window_type, summary_text, generated_at FROM insight_narratives
+        WHERE window_type = ? ORDER BY generated_at DESC, id DESC LIMIT 1
+        """,
+        (window_type,),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def save_narrative(conn: sqlite3.Connection, window_type: str, summary_text: str) -> dict:
+    with conn:
+        cursor = conn.execute(
+            "INSERT INTO insight_narratives (window_type, summary_text) VALUES (?, ?)",
+            (window_type, summary_text),
+        )
+    row = conn.execute(
+        "SELECT id, window_type, summary_text, generated_at FROM insight_narratives WHERE id = ?",
+        (cursor.lastrowid,),
+    ).fetchone()
+    return dict(row)

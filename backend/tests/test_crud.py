@@ -88,6 +88,65 @@ def test_resolve_provisional_profile_merges_into_existing_match(conn):
     assert remaining is None  # placeholder discarded
 
 
+# --- fuzzy repurchase matching (0.8.0) ---
+
+
+def test_search_bean_profiles_fuzzy_fallback_catches_typo(conn):
+    crud.resolve_bean_profile(conn, "Detour Coffee Roasters", "Ethiopia Guji")
+    results = crud.search_bean_profiles(conn, "Detuor Coffee Roasters")
+    assert len(results) == 1
+    assert results[0]["roaster"] == "Detour Coffee Roasters"
+
+
+def test_search_bean_profiles_prefix_match_takes_priority_over_fuzzy(conn):
+    crud.resolve_bean_profile(conn, "Stumptown", "Hair Bender")
+    crud.resolve_bean_profile(conn, "Stumptown", "Hair Blender Blend")
+    results = crud.search_bean_profiles(conn, "Stump", limit=1)
+    assert len(results) == 1
+    assert results[0]["bean_name"] == "Hair Bender"
+
+
+def test_resolve_provisional_profile_fuzzy_merges_ocr_typo(conn):
+    # The real 0.5.1 case: same bag, OCR read the bean name slightly
+    # differently on two separate photo submissions.
+    existing_id = crud.resolve_bean_profile(conn, "Monogram", "Jairo Aroila")
+    provisional_id = crud.create_provisional_bean_profile(conn)
+
+    resolved_id = crud.resolve_provisional_profile(conn, provisional_id, "Monogram", "Jario Arcila")
+
+    assert resolved_id == existing_id
+    remaining = conn.execute("SELECT id FROM bean_profiles WHERE id = ?", (provisional_id,)).fetchone()
+    assert remaining is None
+
+
+def test_resolve_provisional_profile_does_not_merge_below_cutoff(conn):
+    # A different coffee from a similarly-named roaster ("Detour Coffee"
+    # vs "Detour Coffee Roasters") is similar enough to surface as an
+    # autocomplete suggestion but not similar enough to auto-merge - a
+    # real risk of combining two roasters' entries with no undo.
+    existing_id = crud.resolve_bean_profile(conn, "Detour Coffee Roasters", "Ethiopia Guji")
+    provisional_id = crud.create_provisional_bean_profile(conn)
+
+    resolved_id = crud.resolve_provisional_profile(conn, provisional_id, "Detour Coffee", "Colombia Huila")
+
+    assert resolved_id == provisional_id
+    assert resolved_id != existing_id
+    row = conn.execute("SELECT roaster, is_provisional FROM bean_profiles WHERE id = ?", (provisional_id,)).fetchone()
+    assert row["roaster"] == "Detour Coffee"
+    assert row["is_provisional"] == 0
+
+
+def test_resolve_provisional_profile_unrelated_name_renames_in_place(conn):
+    crud.resolve_bean_profile(conn, "Stumptown", "Hair Bender")
+    provisional_id = crud.create_provisional_bean_profile(conn)
+
+    resolved_id = crud.resolve_provisional_profile(conn, provisional_id, "Intelligentsia", "Black Cat")
+
+    assert resolved_id == provisional_id
+    count = conn.execute("SELECT COUNT(*) AS n FROM bean_profiles").fetchone()["n"]
+    assert count == 2
+
+
 def test_create_entry_without_identity_creates_provisional_profile(conn):
     data = EntryCreate(entry_type="bag", roaster=None, bean_name=None, score=7)
     entry_id = crud.create_entry(conn, data, has_photos=True)
@@ -235,3 +294,31 @@ def test_add_rating_appends_second_rating(conn):
     entry = crud.get_entry(conn, entry_id)
     assert len(entry["ratings"]) == 2
     assert entry["ratings"][1]["score"] == 8
+
+
+# --- AI narrative insights (0.9.0) ---
+
+
+def test_get_latest_narrative_returns_none_when_absent(conn):
+    assert crud.get_latest_narrative(conn, "all_time") is None
+
+
+def test_save_narrative_then_get_latest_returns_it(conn):
+    saved = crud.save_narrative(conn, "all_time", "You lean towards washed Colombian coffees.")
+    fetched = crud.get_latest_narrative(conn, "all_time")
+    assert fetched["id"] == saved["id"]
+    assert fetched["summary_text"] == "You lean towards washed Colombian coffees."
+    assert fetched["window_type"] == "all_time"
+
+
+def test_get_latest_narrative_is_scoped_by_window_type(conn):
+    crud.save_narrative(conn, "all_time", "All-time summary")
+    assert crud.get_latest_narrative(conn, "recent") is None
+
+
+def test_save_narrative_twice_returns_most_recent_on_get(conn):
+    crud.save_narrative(conn, "all_time", "First summary")
+    second = crud.save_narrative(conn, "all_time", "Second summary")
+    fetched = crud.get_latest_narrative(conn, "all_time")
+    assert fetched["id"] == second["id"]
+    assert fetched["summary_text"] == "Second summary"
