@@ -53,6 +53,43 @@ class RatingCreate(RatingFields):
     pass
 
 
+class EntryUpdate(BaseModel):
+    # Manual correction UI (0.7.0) - every field optional, and unlike
+    # apply_extraction_result's COALESCE-skip-nulls merge, an explicit null
+    # here means "clear this field" (see crud.update_entry / exclude_unset).
+    # Identity (roaster/bean_name) isn't editable here - that's bean_profile
+    # resolution logic, out of scope for this milestone.
+    cafe_name: Optional[str] = None
+    entry_date: Optional[date] = None
+    price_paid: Optional[float] = None
+    currency: Optional[str] = None
+    origin_country: Optional[str] = None
+    region: Optional[str] = None
+    farm_producer: Optional[str] = None
+    altitude_m: Optional[int] = None
+    variety: Optional[str] = None
+    process: Optional[str] = None
+    co_ferment_status: Optional[CoFermentStatus] = None
+    co_ferment_ingredient: Optional[str] = None
+    certifications: Optional[str] = None
+    roast_level: Optional[str] = None
+    printed_tasting_notes: Optional[str] = None
+    roast_date: Optional[date] = None
+    bag_weight_g: Optional[int] = None
+    batch_number: Optional[str] = None
+    roast_location: Optional[str] = None
+
+
+class RatingUpdate(BaseModel):
+    score: Optional[float] = Field(default=None, ge=0, le=10)
+    narrative_notes: Optional[str] = None
+    acidity_score: Optional[float] = Field(default=None, ge=0, le=10)
+    body_score: Optional[float] = Field(default=None, ge=0, le=10)
+    sweetness_score: Optional[float] = Field(default=None, ge=0, le=10)
+    brew_style: Optional[BrewStyle] = None
+    repurchase: Optional[Repurchase] = None
+
+
 class BeanProfileOut(BaseModel):
     id: int
     roaster: str
@@ -63,6 +100,13 @@ class BeanProfileOut(BaseModel):
 class FarmOut(BaseModel):
     farm_name: str
     location: Optional[str] = None
+
+
+class PhotoOut(BaseModel):
+    id: int
+    entry_id: int
+    upload_order: Optional[int]
+    date_entered: datetime
 
 
 class RatingOut(RatingFields):
@@ -98,6 +142,8 @@ class EntryOut(BaseModel):
     batch_number: Optional[str]
     roast_location: Optional[str]
     farms: list[FarmOut]
+    photos: list[PhotoOut]
+    related_photos: list[PhotoOut]
     ratings: list[RatingOut]
 
 

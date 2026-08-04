@@ -3,6 +3,18 @@ from typing import Optional
 
 from .models import EntryCreate, RatingCreate
 
+_UPDATABLE_ENTRY_FIELDS = {
+    "cafe_name", "entry_date", "price_paid", "currency",
+    "origin_country", "region", "farm_producer", "altitude_m", "variety", "process",
+    "co_ferment_status", "co_ferment_ingredient", "certifications", "roast_level",
+    "printed_tasting_notes", "roast_date", "bag_weight_g", "batch_number", "roast_location",
+}
+
+_UPDATABLE_RATING_FIELDS = {
+    "score", "narrative_notes", "acidity_score", "body_score", "sweetness_score",
+    "brew_style", "repurchase",
+}
+
 
 def resolve_bean_profile(conn: sqlite3.Connection, roaster: str, bean_name: str) -> int:
     roaster = roaster.strip()
@@ -129,6 +141,22 @@ def add_entry_photo(conn: sqlite3.Connection, entry_id: int, photo_path: str, up
             (entry_id, photo_path, upload_order),
         )
     return cursor.lastrowid
+
+
+def get_entry_photo_paths(conn: sqlite3.Connection, entry_id: int) -> list[str]:
+    rows = conn.execute(
+        "SELECT photo_path FROM entry_photos WHERE entry_id = ? ORDER BY upload_order",
+        (entry_id,),
+    ).fetchall()
+    return [row["photo_path"] for row in rows]
+
+
+def mark_extraction_pending(conn: sqlite3.Connection, entry_id: int) -> None:
+    with conn:
+        conn.execute(
+            "UPDATE entries SET extraction_status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (entry_id,),
+        )
 
 
 def apply_extraction_result(conn: sqlite3.Connection, entry_id: int, result: dict) -> None:
@@ -280,7 +308,21 @@ def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
         "SELECT farm_name, location FROM entry_farms WHERE entry_id = ? ORDER BY id",
         (entry_id,),
     ).fetchall()
+    photo_rows = conn.execute(
+        "SELECT id, entry_id, upload_order, date_entered FROM entry_photos WHERE entry_id = ? ORDER BY upload_order",
+        (entry_id,),
+    ).fetchall()
     entry = dict(entry_row)
+    related_photo_rows = conn.execute(
+        """
+        SELECT ep.id, ep.entry_id, ep.upload_order, ep.date_entered
+        FROM entry_photos ep
+        JOIN entries e2 ON e2.id = ep.entry_id
+        WHERE e2.bean_profile_id = ? AND ep.entry_id != ?
+        ORDER BY ep.date_entered DESC
+        """,
+        (entry["bean_profile_id"], entry_id),
+    ).fetchall()
     entry["bean_profile"] = {
         "id": entry.pop("bp_id"),
         "roaster": entry.pop("bp_roaster"),
@@ -289,4 +331,60 @@ def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
     }
     entry["ratings"] = [dict(r) for r in rating_rows]
     entry["farms"] = [dict(f) for f in farm_rows]
+    entry["photos"] = [dict(p) for p in photo_rows]
+    entry["related_photos"] = [dict(p) for p in related_photo_rows]
     return entry
+
+
+def update_entry(conn: sqlite3.Connection, entry_id: int, fields: dict) -> bool:
+    fields = {k: v for k, v in fields.items() if k in _UPDATABLE_ENTRY_FIELDS}
+    if "entry_date" in fields and fields["entry_date"] is not None:
+        fields["entry_date"] = fields["entry_date"].isoformat()
+    if "roast_date" in fields and fields["roast_date"] is not None:
+        fields["roast_date"] = fields["roast_date"].isoformat()
+    if not fields:
+        return conn.execute("SELECT 1 FROM entries WHERE id = ?", (entry_id,)).fetchone() is not None
+    set_clause = ", ".join(f"{key} = ?" for key in fields)
+    with conn:
+        cursor = conn.execute(
+            f"UPDATE entries SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (*fields.values(), entry_id),
+        )
+    return cursor.rowcount > 0
+
+
+def delete_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[list[str]]:
+    # Returns the deleted entry's photo file paths (so the router can
+    # remove the actual files) or None if the entry didn't exist. No
+    # ON DELETE CASCADE in the schema, so children get removed explicitly,
+    # in one transaction, before the entry itself.
+    with conn:
+        if conn.execute("SELECT 1 FROM entries WHERE id = ?", (entry_id,)).fetchone() is None:
+            return None
+        photo_rows = conn.execute(
+            "SELECT photo_path FROM entry_photos WHERE entry_id = ?", (entry_id,)
+        ).fetchall()
+        conn.execute("DELETE FROM ratings WHERE entry_id = ?", (entry_id,))
+        conn.execute("DELETE FROM entry_photos WHERE entry_id = ?", (entry_id,))
+        conn.execute("DELETE FROM entry_farms WHERE entry_id = ?", (entry_id,))
+        conn.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
+    return [row["photo_path"] for row in photo_rows]
+
+
+def update_rating(conn: sqlite3.Connection, rating_id: int, fields: dict) -> bool:
+    fields = {k: v for k, v in fields.items() if k in _UPDATABLE_RATING_FIELDS}
+    if not fields:
+        return conn.execute("SELECT 1 FROM ratings WHERE id = ?", (rating_id,)).fetchone() is not None
+    set_clause = ", ".join(f"{key} = ?" for key in fields)
+    with conn:
+        cursor = conn.execute(
+            f"UPDATE ratings SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (*fields.values(), rating_id),
+        )
+    return cursor.rowcount > 0
+
+
+def delete_rating(conn: sqlite3.Connection, rating_id: int) -> bool:
+    with conn:
+        cursor = conn.execute("DELETE FROM ratings WHERE id = ?", (rating_id,))
+    return cursor.rowcount > 0

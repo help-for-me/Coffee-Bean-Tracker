@@ -238,7 +238,7 @@ grabbable directly from Unraid's file browser - the same access pattern
 already used for the SQLite DB and photos - without going through the
 Docker UI's Logs panel each time.
 
-### 0.7.0 - Fixing wrong data
+### 0.7.0 - Fixing wrong data ✅ shipped 2026-08-04
 Extraction retry + a real edit/delete UI for saved entries and ratings.
 High priority - since "fast one-way log" from 0.1.0 means there's
 currently no way to correct a mistake, this comes right after 0.6.0's
@@ -270,12 +270,27 @@ latest) belongs, per earlier discussion.
   AI re-extraction and manual editing are two different ways to fix the
   same wrong data, both belong here.
 
-**Known extraction accuracy issues, bundled here instead of fixed
-piecemeal** (see CLAUDE.md's "Extraction prompt changes" policy) - one
-consolidated prompt-engineering pass covers all of these together:
+**Known extraction accuracy issue, fixed here** (see CLAUDE.md's
+"Extraction prompt changes" policy):
 - Bilingual packaging text (e.g. "Whole Bean Coffee / Grains de café" on
   a Canadian bag) leaking into `printed_tasting_notes` instead of being
-  recognized as a product-type label and excluded.
+  recognized as a product-type label and excluded. The extraction prompt
+  now explicitly calls this out as text to exclude from that field.
+
+Built: `GET /photos/{id}` (DB-trusted path lookup, no path-traversal
+surface since the path is never client-supplied), own + related photo
+galleries on Entry Detail, `POST /entries/{id}/reextract` (re-runs
+extraction against the entry's own saved photos in the background),
+`PATCH`/`DELETE /entries/{id}` and `PATCH`/`DELETE
+/entries/{id}/ratings/{rating_id}` (whitelisted, `exclude_unset`-based
+partial updates so an explicit null correctly clears a field), with
+entry deletion cascading ratings/photos/farms rows in one transaction and
+removing photo files from disk. Pytest-covered (36 new cases across crud
+and router level, full suite now 150 passing) and verified end-to-end in
+a real browser: viewed both photo galleries, edited bag details and a
+rating, deleted a rating, re-ran extraction, and deleted an entire entry -
+confirming its photo file was actually removed from disk, not just its
+DB row.
 
 ### 0.8.0 - Fuzzy repurchase matching
 The 0.1.0 autocomplete only does exact/prefix text matches. High priority.

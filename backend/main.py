@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import database
 from .logging_config import setup_logging
-from .routers import bean_profiles, entries, insights
+from .routers import bean_profiles, entries, insights, photos
 
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
@@ -45,6 +45,7 @@ app.add_middleware(
 app.include_router(entries.router)
 app.include_router(bean_profiles.router)
 app.include_router(insights.router)
+app.include_router(photos.router)
 
 
 @app.get("/health")
