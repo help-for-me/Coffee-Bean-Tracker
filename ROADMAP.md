@@ -193,6 +193,18 @@ per earlier discussion.
   already groups entries by an exact (case-insensitive) match on
   roaster + bean name since 0.1.0, so "other entries with this
   bean_profile_id" is a plain join, available today.
+- **Re-run AI extraction from Entry Detail.** A button that re-triggers
+  `run_extraction` for an entry using its own saved photo(s) - covers
+  cases where a prompt fix (like 0.2.1) or a retry might get a better
+  result the second time. Available today using just that entry's photos.
+  Extending it to also consider photos from *other* bean profiles the
+  system suspects are the same bean (e.g. "Detour Coffee" vs. "Detour
+  Coffee Roasters") depends on 1.2.0's fuzzy matching - not available
+  until that exists.
+- **Manual field correction UI.** Same screen, the actual edit form for
+  bag-detail fields and ratings referenced at the top of this milestone -
+  AI re-extraction and manual editing are two different ways to fix the
+  same wrong data, both belong here.
 
 ### 1.2.0 - Fuzzy repurchase matching
 The 0.1.0 autocomplete only does exact/prefix text matches. High priority.
