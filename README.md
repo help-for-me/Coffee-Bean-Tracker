@@ -76,33 +76,17 @@ its port to your LAN and don't forward it through your router or firewall.
 - [ ] 1.8.0 - Multi-user/auth
 - [ ] 1.9.0 - Visual design pass
 - [ ] 1.10.0 - Data export/import (JSON round-trip backup, for restoring or moving to a new install)
-- [ ] 2.0.0 - Blank slate
+- [ ] 2.0.0 - Blank slate - deliberately unplanned, general candidates so far:
+  - Unraid Community Applications feed listing (public template submission)
+  - Proxmox VE Helper-Scripts install script (community submission)
+  - Web-lookup enrichment: describe a bean by text or photo, app searches
+    the internet to fill in the gaps
 
 The 1.10.0 backup format is JSON, not CSV/XLSX. An entry can have several
 ratings, and that one-to-many relationship doesn't flatten into rows and
 columns without ambiguity - JSON keeps the structure exact so a restore is
 reliable. CSV (MVP) and XLSX (1.3.0) stay as human-readable reports for
 opening in a spreadsheet, not as a re-import source.
-
-## Future ideas (not version-gated)
-
-Things worth doing eventually but not scoped or scheduled yet:
-
-- **Unraid Community Applications listing.** The self-hosted Unraid template
-  (0.4.0) covers "click Update" for personal use. Submitting it to the public
-  CA feed so anyone can find and install it is a bigger, separate step (PR
-  review, ongoing support expectations) - a someday goal, not required for
-  this app to work well on Unraid.
-- **Proxmox VE Helper-Scripts.** The app already runs on Proxmox today via
-  plain Docker Compose (see the Deployment note above) - no extra work
-  needed for that. Adding a one-command install script to the community
-  Helper-Scripts project is a nicer on-ramp for other Proxmox users, but
-  it's a separate community submission, not a blocker for personal use.
-- **Web-lookup enrichment.** Describe a bean by text or picture (no bag
-  label needed) and have the app search the internet for whatever details
-  it can find (roaster's own site, etc.) to fill in the gaps. Explicitly
-  the lowest priority idea on this whole list - last thing to tackle, after
-  everything else including the numbered roadmap above.
 
 ## License
 
