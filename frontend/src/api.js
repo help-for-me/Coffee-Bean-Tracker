@@ -44,3 +44,7 @@ export function addRating(entryId, data) {
     body: JSON.stringify(data),
   })
 }
+
+export function getInsights() {
+  return request('/insights')
+}

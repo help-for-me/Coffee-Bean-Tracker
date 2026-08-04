@@ -67,7 +67,7 @@ criteria.
 - [x] 0.2.0 - AI/OCR extraction loop
 - [x] 0.2.1 - Extraction accuracy fix (process/region/variety confusion)
 - [x] 0.3.0 - Deploy on the primary Docker host (Docker, GHCR)
-- [ ] 0.4.0 - Insights (stats and charts)
+- [ ] 0.4.0 - Insights (stats and charts) - built, awaiting your manual test
 - [ ] 0.5.0 - Photo-first identity (attach a photo, no typing required)
 - [ ] 1.0.0 - Stable
 - [ ] 1.1.0 - Fixing wrong data

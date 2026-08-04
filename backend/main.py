@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import database
-from .routers import bean_profiles, entries
+from .routers import bean_profiles, entries, insights
 
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
@@ -44,6 +44,7 @@ app.add_middleware(
 
 app.include_router(entries.router)
 app.include_router(bean_profiles.router)
+app.include_router(insights.router)
 
 
 @app.get("/health")

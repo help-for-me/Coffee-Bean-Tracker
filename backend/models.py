@@ -105,3 +105,45 @@ class EntrySummary(BaseModel):
     date_entered: datetime
     extraction_status: str
     latest_score: Optional[float]
+
+
+class ProcessStat(BaseModel):
+    process: str
+    avg_score: float
+    count: int
+
+
+class MonthlyStat(BaseModel):
+    month: str
+    avg_score: float
+    count: int
+
+
+class RepurchasedItem(BaseModel):
+    roaster: str
+    bean_name: str
+    entry_count: int
+    avg_score: float
+    trend: Literal["up", "down", "flat"]
+
+
+class RecentWindow(BaseModel):
+    applicable: bool
+    cutoff_date: Optional[date]
+
+
+class ByProcess(BaseModel):
+    all_time: list[ProcessStat]
+    recent: list[ProcessStat]
+
+
+class MostRepurchased(BaseModel):
+    all_time: list[RepurchasedItem]
+    recent: list[RepurchasedItem]
+
+
+class InsightsOut(BaseModel):
+    monthly_trend: list[MonthlyStat]
+    by_process: ByProcess
+    most_repurchased: MostRepurchased
+    recent_window: RecentWindow
