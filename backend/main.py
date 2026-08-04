@@ -1,17 +1,12 @@
-import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
-# Without this, our own logger.info() calls (e.g. extraction success/failure)
-# are silently dropped - Python's default log level is WARNING.
-logging.basicConfig(level=logging.INFO)
-
-# Must run before any other backend module is imported - database.py and
-# photos.py read env vars into module-level constants at import time, so
-# .env has to be loaded into the process first. Docker doesn't need this
-# (docker-compose injects env vars directly), but this is a harmless no-op
-# when there's no .env file to find.
+# Must run before any other backend module is imported - database.py,
+# photos.py, and logging_config.py all read env vars into module-level
+# constants at import time, so .env has to be loaded into the process
+# first. Docker doesn't need this (docker-compose injects env vars
+# directly), but this is a harmless no-op when there's no .env file to find.
 load_dotenv()
 
 from pathlib import Path
@@ -22,6 +17,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import database
+from .logging_config import setup_logging
 from .routers import bean_profiles, entries, insights
 
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
@@ -29,6 +25,10 @@ FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Configured here rather than at import time so tests can redirect
+    # LOG_PATH per-run (see conftest.py) - module-level code only executes
+    # once for the whole test session, which would be too early for that.
+    setup_logging()
     database.init_db()
     yield
 

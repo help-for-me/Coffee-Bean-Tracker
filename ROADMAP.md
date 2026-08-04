@@ -219,6 +219,20 @@ created a second profile rather than merging. Expected, not a new defect
 - accepted as a pass since 0.5.0 never claimed to solve fuzzy matching,
 just photo-first identity.
 
+### 0.6.0 - Exportable application logs
+**High priority**, prompted by the 0.5.1 test attempt: extraction failed
+and the only way to diagnose it was a screenshot conversation, not an
+actual error. A real, buildable capability (not an observation period),
+so it gets its own MAJOR-0 minor version rather than sitting as a
+sub-item under 1.0.0's tagging cycle - and it belongs *before* 1.0.1's
+real-world-use period below, so that period actually benefits from it.
+
+Write logs to a file under the already-mounted `data/` volume (not just
+Docker's ephemeral log buffer), so they survive restarts and are
+grabbable directly from Unraid's file browser - the same access pattern
+already used for the SQLite DB and photos - without going through the
+Docker UI's Logs panel each time.
+
 ---
 
 ## MAJOR 1 - Stable
@@ -230,14 +244,6 @@ covers what genuinely needs the whole system or time to observe:
 - `1.0.1` - real-world use: daily use for 1-2 weeks, real bags and cafe cups
 - `1.0.2` - deployment resilience: container restart doesn't lose data,
   LAN-only exposure confirmed
-- `1.0.3` - **exportable application logs (high priority).** Prompted by
-  the 0.5.1 test attempt: extraction failed and the only way to diagnose
-  it was a screenshot conversation, not an actual error. Write logs to a
-  file under the already-mounted `data/` volume (not just Docker's
-  ephemeral log buffer), so they survive restarts and are grabbable
-  directly from Unraid's file browser - the same access pattern already
-  used for the SQLite DB and photos - without going through the Docker
-  UI's Logs panel each time.
 
 Manual full-system test closes 1.0.x.
 
