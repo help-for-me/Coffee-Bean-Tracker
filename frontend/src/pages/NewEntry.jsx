@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BeanProfileAutocomplete from '../components/BeanProfileAutocomplete'
 import AdvancedRatingFields from '../components/AdvancedRatingFields'
@@ -19,6 +19,7 @@ const initialDetails = {
   printed_tasting_notes: '',
   roast_date: '',
   bag_weight_g: '',
+  batch_number: '',
   price_paid: '',
   currency: 'CAD',
   entry_date: '',
@@ -36,10 +37,13 @@ export default function NewEntry() {
   const [advanced, setAdvanced] = useState(emptyAdvancedRating)
   const [showDetails, setShowDetails] = useState(false)
   const [details, setDetails] = useState(initialDetails)
+  const [photos, setPhotos] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
   const updateDetail = (key) => (e) => setDetails((d) => ({ ...d, [key]: e.target.value }))
+  const photoPreviews = useMemo(() => photos.map((file) => URL.createObjectURL(file)), [photos])
+  const removePhoto = (index) => setPhotos((prev) => prev.filter((_, i) => i !== index))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -75,10 +79,11 @@ export default function NewEntry() {
         printed_tasting_notes: details.printed_tasting_notes || null,
         roast_date: details.roast_date || null,
         bag_weight_g: details.bag_weight_g ? Number(details.bag_weight_g) : null,
+        batch_number: details.batch_number || null,
         score: Number(score),
         narrative_notes: narrativeNotes.trim() || null,
         ...ratingPayloadFromAdvanced(advanced),
-      })
+      }, photos)
       navigate('/history')
     } catch (err) {
       setError(err.message)
@@ -156,6 +161,37 @@ export default function NewEntry() {
         />
       </div>
 
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700">Photos (optional)</label>
+        <p className="mb-1 text-xs text-gray-500">
+          Bag label, menu board, or info card. Origin, process, roast level, and tasting notes get
+          filled in automatically in the background.
+        </p>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => setPhotos(Array.from(e.target.files ?? []))}
+          className="block w-full text-sm text-gray-700"
+        />
+        {photoPreviews.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {photoPreviews.map((src, i) => (
+              <div key={src} className="relative">
+                <img src={src} alt="" className="h-16 w-16 rounded object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(i)}
+                  className="absolute -right-1 -top-1 rounded-full bg-gray-800 px-1.5 text-xs text-white"
+                >
+                  x
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <button
         type="button"
         onClick={() => setShowAdvanced((v) => !v)}
@@ -209,6 +245,7 @@ export default function NewEntry() {
           </div>
           <Field label="Roast date" type="date" value={details.roast_date} onChange={updateDetail('roast_date')} />
           <Field label="Bag weight (g)" type="number" value={details.bag_weight_g} onChange={updateDetail('bag_weight_g')} />
+          <Field label="Batch number" value={details.batch_number} onChange={updateDetail('batch_number')} />
           <Field label="Price paid" type="number" value={details.price_paid} onChange={updateDetail('price_paid')} />
           <Field label="Currency" value={details.currency} onChange={updateDetail('currency')} />
           <Field label="Entry date" type="date" value={details.entry_date} onChange={updateDetail('entry_date')} />

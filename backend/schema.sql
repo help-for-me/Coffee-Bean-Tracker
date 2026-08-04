@@ -38,6 +38,7 @@ CREATE TABLE entries (
     printed_tasting_notes TEXT,       -- flavor notes from the bag/menu/info card
     roast_date DATE,
     bag_weight_g INTEGER,
+    batch_number TEXT,                -- roast/lot number, when the bag prints one
 
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

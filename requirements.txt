@@ -1,5 +1,6 @@
 fastapi>=0.115
 uvicorn[standard]>=0.32
+python-dotenv>=1.0
 python-multipart>=0.0.9
 anthropic>=0.39
 pandas>=2.2

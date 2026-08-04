@@ -3,6 +3,9 @@
 /photos/
 /exports/
 
+# Personal infra notes (hostnames, hardware specs, etc.), never committed
+/private/
+
 # Python
 __pycache__/
 *.pyc
