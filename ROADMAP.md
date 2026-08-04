@@ -72,9 +72,19 @@ to it redundantly with the dedicated co-ferment fields. Fixed by:
   known one).
 - Covered by pytest cases built directly from the two real failures above.
 
-Still to confirm: accuracy against a fresh bag photo with the updated
-prompt - the fix above hasn't been manually re-tested against a live photo
-yet.
+Confirmed: re-tested against both real bags (Elkin Guzman, Monogram) with
+the updated prompt - variety/process/tasting-notes now split correctly,
+region correctly left null instead of guessing a farm name into it.
+
+Also added in 0.2.1: `roast_location` (where the roaster roasted it, e.g.
+"Vancouver, BC" - distinct from origin_country/region, which is where it
+was grown) and multi-farm support (`entry_farms` table - most bags name
+one farm, but a blend can list several, each with its own location).
+Since the Iron deployment already has a live populated database, this
+needed a real migration path (previously `init_db()` only ever ran
+`schema.sql` against a brand-new file) - added via `PRAGMA user_version`
+in `database.py`, additive only, covered by a migration test that
+simulates the pre-migration schema shape.
 
 ### 0.3.0 - Deploy on the primary Docker host
 Swapped ahead of Insights, and split from polish, so this one thing happens

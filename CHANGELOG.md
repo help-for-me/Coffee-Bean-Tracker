@@ -7,16 +7,32 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `roast_location` field (where the roaster roasted it, e.g. "Vancouver,
+  BC" - distinct from origin_country/region, which is where it was
+  grown), extracted alongside the other bag-printed attributes and
+  typeable manually.
+- Multi-farm support: a new `entry_farms` table for bags/blends that list
+  more than one distinct farm, each with its own location. Shown on Entry
+  Detail as a new "Farms" section. `farm_producer` stays as a simple
+  single-value summary field for backward compatibility.
+- A real database migration mechanism (`PRAGMA user_version` in
+  `database.py`) - previously `init_db()` only ran `schema.sql` against a
+  brand-new database file, so schema changes never reached an
+  already-deployed, already-populated database like Iron's. This is the
+  first schema change to land after a real deployment existed, so the gap
+  needed closing now; the migration itself is purely additive.
+
 ### Fixed
-- Extraction accuracy (0.2.1, pending a real-photo retest before closing):
-  two real bags exposed field-misfiling, not outright failure - variety and
-  process words ("Castillo", "Honey") landing in `printed_tasting_notes`
+- Extraction accuracy (0.2.1): two real bags exposed field-misfiling, not
+  outright failure - variety and process words ("Castillo", "Honey") landing in `printed_tasting_notes`
   instead of their own fields, a farm name landing in `region` instead of
   `farm_producer`, and co-ferment wording getting redundantly appended to
   `process`. Fixed with a coffee vocabulary reference embedded in the
   extraction prompt (`backend/extractor/coffee_vocab.py`), explicit
   field-boundary guidance, and defensive post-processing that strips
   leaked co-ferment wording and corrects small typos against known terms.
+  Confirmed fixed against both real bags after redeploying.
 - Insights tab showed stale placeholder text referencing milestone 0.3.0
   (from before 0.3.0/0.4.0 were reordered) instead of 0.4.0.
 - README's `PHOTOS_PATH` default was still the old Docker-only absolute

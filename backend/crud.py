@@ -46,8 +46,8 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool =
                 extraction_status, extraction_source,
                 origin_country, region, farm_producer, altitude_m, variety, process,
                 co_ferment_status, co_ferment_ingredient, certifications, roast_level,
-                printed_tasting_notes, roast_date, bag_weight_g, batch_number
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                printed_tasting_notes, roast_date, bag_weight_g, batch_number, roast_location
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 bean_profile_id,
@@ -72,6 +72,7 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool =
                 data.roast_date.isoformat() if data.roast_date else None,
                 data.bag_weight_g,
                 data.batch_number,
+                data.roast_location,
             ),
         )
         entry_id = cursor.lastrowid
@@ -109,6 +110,7 @@ def apply_extraction_result(conn: sqlite3.Connection, entry_id: int, result: dic
                 roast_date = COALESCE(?, roast_date),
                 bag_weight_g = COALESCE(?, bag_weight_g),
                 batch_number = COALESCE(?, batch_number),
+                roast_location = COALESCE(?, roast_location),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """,
@@ -127,9 +129,16 @@ def apply_extraction_result(conn: sqlite3.Connection, entry_id: int, result: dic
                 result.get("roast_date"),
                 result.get("bag_weight_g"),
                 result.get("batch_number"),
+                result.get("roast_location"),
                 entry_id,
             ),
         )
+        farms = result.get("farms")
+        if farms:
+            conn.executemany(
+                "INSERT INTO entry_farms (entry_id, farm_name, location) VALUES (?, ?, ?)",
+                [(entry_id, farm["farm_name"], farm.get("location")) for farm in farms if farm.get("farm_name")],
+            )
 
 
 def mark_extraction_failed(conn: sqlite3.Connection, entry_id: int) -> None:
@@ -207,6 +216,10 @@ def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
         "SELECT * FROM ratings WHERE entry_id = ? ORDER BY date_entered",
         (entry_id,),
     ).fetchall()
+    farm_rows = conn.execute(
+        "SELECT farm_name, location FROM entry_farms WHERE entry_id = ? ORDER BY id",
+        (entry_id,),
+    ).fetchall()
     entry = dict(entry_row)
     entry["bean_profile"] = {
         "id": entry.pop("bp_id"),
@@ -214,4 +227,5 @@ def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
         "bean_name": entry.pop("bp_bean_name"),
     }
     entry["ratings"] = [dict(r) for r in rating_rows]
+    entry["farms"] = [dict(f) for f in farm_rows]
     return entry

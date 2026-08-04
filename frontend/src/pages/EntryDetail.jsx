@@ -17,6 +17,7 @@ const BAG_DETAIL_FIELDS = [
   ['roast_date', 'Roast date'],
   ['bag_weight_g', 'Bag weight (g)'],
   ['batch_number', 'Batch number'],
+  ['roast_location', 'Roasted in'],
 ]
 
 function Value({ value }) {
@@ -82,6 +83,20 @@ export default function EntryDetail() {
           <Value value={entry.price_paid ? `${entry.price_paid} ${entry.currency}` : null} />
         </div>
       </div>
+
+      {entry.farms.length > 0 && (
+        <>
+          <h2 className="mb-2 text-sm font-semibold text-gray-900">Farms</h2>
+          <ul className="mb-4 divide-y divide-gray-200 rounded-md border border-gray-200 text-sm">
+            {entry.farms.map((farm, i) => (
+              <li key={`${farm.farm_name}-${i}`} className="flex items-center justify-between p-3">
+                <span>{farm.farm_name}</span>
+                <Value value={farm.location} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <h2 className="mb-2 text-sm font-semibold text-gray-900">
         Ratings ({entry.ratings.length})
