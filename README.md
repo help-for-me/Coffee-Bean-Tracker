@@ -63,8 +63,8 @@ its port to your LAN and don't forward it through your router or firewall.
 
 - [x] 0.1.0 - Foundation (schema, manual entry)
 - [ ] 0.2.0 - AI/OCR extraction loop
-- [ ] 0.3.0 - Insights (stats and charts)
-- [ ] 0.4.0 - Real usage and deployment (Docker, GHCR, self-hosted Unraid template)
+- [ ] 0.3.0 - Real usage and deployment (Docker, GHCR, self-hosted Unraid template)
+- [ ] 0.4.0 - Insights (stats and charts)
 - [ ] 1.0.0 - Stable
 - [ ] 1.1.0 - Fixing wrong data
 - [ ] 1.2.0 - Fuzzy repurchase matching
