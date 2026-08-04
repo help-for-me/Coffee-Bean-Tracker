@@ -53,6 +53,30 @@ def _sniff_media_type(image_bytes: bytes) -> str:
     return "image/jpeg"
 
 
+def _response_text(content_blocks) -> str:
+    # A response can contain multiple content blocks and the first one
+    # isn't always the real text - collect every text block instead of
+    # trusting content[0].
+    text = "".join(block.text for block in content_blocks if getattr(block, "type", None) == "text")
+    text = text.strip()
+    # Defensive: the prompt says "no markdown", but models don't always
+    # comply - strip a ```json ... ``` or ``` ... ``` fence if present.
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else ""
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+    return text
+
+
+def _parse_extraction(content_blocks) -> dict:
+    text = _response_text(content_blocks)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Claude did not return valid JSON: {text[:500]!r}") from exc
+
+
 class ClaudeExtractor(BeanExtractor):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         self.client = Anthropic(api_key=api_key or os.environ["ANTHROPIC_API_KEY"])
@@ -77,4 +101,4 @@ class ClaudeExtractor(BeanExtractor):
             max_tokens=1024,
             messages=[{"role": "user", "content": content}],
         )
-        return json.loads(response.content[0].text)
+        return _parse_extraction(response.content)

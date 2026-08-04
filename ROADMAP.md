@@ -120,12 +120,45 @@ summary yet (that's 1.4.0) - just the charts and numbers.
 Manual test closes 0.4.x: the insights page shows accurate numbers against
 real entries.
 
+### 0.5.0 - Photo-first identity
+Attaching a photo should be enough on its own - typing the roaster and bean
+name becomes optional instead of required, and extraction fills them in
+too, not just the surrounding details. This is a real architecture change,
+not a small tweak, and needs restructuring when it's tackled:
+
+- **The schema blocks this today.** `entries.bean_profile_id` is
+  `NOT NULL` - every entry must be linked to a specific bean at creation
+  time. Submitting with no typed name means either the FK becomes
+  nullable (and something has to show in History while it's still
+  unresolved), or the app creates a provisional bean profile immediately
+  and merges/corrects it once extraction resolves a real name. Needs a
+  real design decision, not just a code change.
+- **The extraction prompt currently excludes identity on purpose** ("roaster
+  and bean_name are NOT part of this extraction... always resolved
+  synchronously, never waited on from a photo" - the original 0.2.0
+  design). That constraint gets lifted here: the prompt needs to also
+  attempt roaster + bean name from the photo.
+- **Overlaps with 1.2.0 (fuzzy repurchase matching).** If extraction
+  returns "Detour Coffee" and an existing bean profile says "Detour
+  Coffee Roasters," this needs the same fuzzy-matching problem 1.2.0
+  already plans to solve, just triggered from the extraction side instead
+  of the autocomplete field. Worth building them together or at least
+  coordinating rather than solving matching twice.
+- Manual typing stays available regardless (still the only option for
+  cafe cups with nothing printed to photograph, and always the fast path
+  when someone already knows the name).
+
+Manual test closes 0.5.x: attach a photo with no typed roaster/bean name,
+confirm the entry saves instantly anyway, confirm the name shows up
+correctly once extraction resolves it, confirm it correctly links to an
+existing bean profile on a repeat instead of creating a duplicate.
+
 ---
 
 ## MAJOR 1 - Stable
 
 ### 1.0.0
-Tagged once 0.4.x's manual test passes. Data integrity and background job
+Tagged once 0.5.x's manual test passes. Data integrity and background job
 reliability were already verified in 0.1.0 and 0.2.0, so this cycle only
 covers what genuinely needs the whole system or time to observe:
 - `1.0.1` - real-world use: daily use for 1-2 weeks, real bags and cafe cups
