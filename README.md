@@ -6,8 +6,6 @@ read automatically in the background to fill in details like origin, process,
 and roast level, so logging something takes seconds. Over time it builds up
 data on what you actually like.
 
-![Home screen](docs/screenshot-home.png)
-
 ## AI disclosure
 
 This project was built using Claude (Anthropic) as an AI coding assistant.
@@ -60,6 +58,10 @@ inbound port; it only reaches out to Claude's API for photo extraction. Bind
 its port to your LAN and don't forward it through your router or firewall.
 
 ## Roadmap
+
+At-a-glance checklist below. See [ROADMAP.md](ROADMAP.md) for what each
+milestone actually contains, deployment specifics, and manual test
+criteria.
 
 - [x] 0.1.0 - Foundation (schema, manual entry)
 - [ ] 0.2.0 - AI/OCR extraction loop
