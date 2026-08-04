@@ -119,6 +119,18 @@ class MonthlyStat(BaseModel):
     count: int
 
 
+class OriginCountryStat(BaseModel):
+    origin_country: str
+    avg_score: float
+    count: int
+
+
+class TastingNoteStat(BaseModel):
+    note: str
+    avg_score: float
+    count: int
+
+
 class RepurchasedItem(BaseModel):
     roaster: str
     bean_name: str
@@ -137,6 +149,16 @@ class ByProcess(BaseModel):
     recent: list[ProcessStat]
 
 
+class ByOriginCountry(BaseModel):
+    all_time: list[OriginCountryStat]
+    recent: list[OriginCountryStat]
+
+
+class ByTastingNote(BaseModel):
+    all_time: list[TastingNoteStat]
+    recent: list[TastingNoteStat]
+
+
 class MostRepurchased(BaseModel):
     all_time: list[RepurchasedItem]
     recent: list[RepurchasedItem]
@@ -145,5 +167,7 @@ class MostRepurchased(BaseModel):
 class InsightsOut(BaseModel):
     monthly_trend: list[MonthlyStat]
     by_process: ByProcess
+    by_origin_country: ByOriginCountry
+    by_tasting_note: ByTastingNote
     most_repurchased: MostRepurchased
     recent_window: RecentWindow

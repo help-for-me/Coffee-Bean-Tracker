@@ -3,8 +3,11 @@ from datetime import date
 from backend import crud
 from backend.insights.stats import (
     _months_ago,
+    _split_notes,
     _trend_direction,
+    average_score_by_origin_country,
     average_score_by_process,
+    average_score_by_tasting_note,
     compute_recent_cutoff,
     get_insights,
     monthly_rating_trend,
@@ -13,10 +16,18 @@ from backend.insights.stats import (
 from backend.models import EntryCreate
 
 
-def _rate_at(conn, roaster, bean_name, score, when, process=None):
+def _rate_at(conn, roaster, bean_name, score, when, process=None, origin_country=None, printed_tasting_notes=None):
     # Bypasses the normal create_entry/add_rating flow so date_entered can
     # be backdated precisely - real inserts always stamp "now".
-    data = EntryCreate(entry_type="bag", roaster=roaster, bean_name=bean_name, score=score, process=process)
+    data = EntryCreate(
+        entry_type="bag",
+        roaster=roaster,
+        bean_name=bean_name,
+        score=score,
+        process=process,
+        origin_country=origin_country,
+        printed_tasting_notes=printed_tasting_notes,
+    )
     entry_id = crud.create_entry(conn, data)
     with conn:
         conn.execute("UPDATE ratings SET date_entered = ? WHERE entry_id = ?", (when.isoformat(), entry_id))
@@ -135,6 +146,72 @@ def test_average_score_by_process_since_filters_by_date(conn):
     assert recent[0]["avg_score"] == 9
 
 
+# --- _split_notes ---
+
+
+def test_split_notes_comma_separated():
+    assert _split_notes("Mango, Papaya, Floral") == ["Mango", "Papaya", "Floral"]
+
+
+def test_split_notes_dash_separated():
+    assert _split_notes("Hibiscus - Peach - Tropical Fruits") == ["Hibiscus", "Peach", "Tropical Fruits"]
+
+
+def test_split_notes_does_not_split_hyphenated_word():
+    assert _split_notes("Anaerobic-Washed") == ["Anaerobic-Washed"]
+
+
+def test_split_notes_single_note():
+    assert _split_notes("Chocolate") == ["Chocolate"]
+
+
+# --- average_score_by_origin_country ---
+
+
+def test_average_score_by_origin_country_groups_and_averages(conn):
+    _rate_at(conn, "Stumptown", "Hair Bender", 8, date(2026, 7, 1), origin_country="Colombia")
+    _rate_at(conn, "Intelligentsia", "Black Cat", 6, date(2026, 7, 2), origin_country="Colombia")
+    _rate_at(conn, "Monogram", "Mango", 9, date(2026, 7, 3), origin_country="Ethiopia")
+
+    results = {r["origin_country"]: r for r in average_score_by_origin_country(conn)}
+    assert results["Colombia"]["avg_score"] == 7
+    assert results["Colombia"]["count"] == 2
+    assert results["Ethiopia"]["avg_score"] == 9
+
+
+def test_average_score_by_origin_country_sorted_best_first(conn):
+    _rate_at(conn, "Stumptown", "Hair Bender", 5, date(2026, 7, 1), origin_country="Brazil")
+    _rate_at(conn, "Monogram", "Mango", 9, date(2026, 7, 2), origin_country="Ethiopia")
+    results = average_score_by_origin_country(conn)
+    assert [r["origin_country"] for r in results] == ["Ethiopia", "Brazil"]
+
+
+# --- average_score_by_tasting_note ---
+
+
+def test_average_score_by_tasting_note_splits_and_dedups_case(conn):
+    _rate_at(conn, "Stumptown", "A", 8, date(2026, 7, 1), printed_tasting_notes="Mango, Papaya")
+    _rate_at(conn, "Monogram", "B", 6, date(2026, 7, 2), printed_tasting_notes="mango")
+
+    results = {r["note"]: r for r in average_score_by_tasting_note(conn)}
+    assert results["Mango"]["count"] == 2
+    assert results["Mango"]["avg_score"] == 7
+    assert results["Papaya"]["count"] == 1
+
+
+def test_average_score_by_tasting_note_handles_dash_delimited_bag(conn):
+    _rate_at(conn, "Pallet Coffee", "Elkin Guzman", 9, date(2026, 7, 1), printed_tasting_notes="Hibiscus - Peach - Tropical Fruits")
+    results = {r["note"] for r in average_score_by_tasting_note(conn)}
+    assert results == {"Hibiscus", "Peach", "Tropical Fruits"}
+
+
+def test_average_score_by_tasting_note_ranked_best_first(conn):
+    _rate_at(conn, "A", "A", 5, date(2026, 7, 1), printed_tasting_notes="Citrus")
+    _rate_at(conn, "B", "B", 9, date(2026, 7, 2), printed_tasting_notes="Chocolate")
+    results = average_score_by_tasting_note(conn)
+    assert results[0]["note"] == "Chocolate"
+
+
 # --- monthly_rating_trend ---
 
 
@@ -188,12 +265,23 @@ def test_get_insights_recent_window_not_applicable_with_sparse_data(conn):
     result = get_insights(conn, today=date(2026, 8, 4))
     assert result["recent_window"]["applicable"] is False
     assert result["by_process"]["recent"] == []
+    assert result["by_origin_country"]["recent"] == []
+    assert result["by_tasting_note"]["recent"] == []
     assert result["most_repurchased"]["recent"] == []
+
+
+def test_get_insights_includes_origin_and_tasting_note_breakdowns(conn):
+    _rate_at(conn, "Stumptown", "Hair Bender", 8, date(2026, 7, 1), origin_country="Colombia", printed_tasting_notes="Chocolate")
+    result = get_insights(conn, today=date(2026, 8, 4))
+    assert result["by_origin_country"]["all_time"] == [{"origin_country": "Colombia", "avg_score": 8, "count": 1}]
+    assert result["by_tasting_note"]["all_time"] == [{"note": "Chocolate", "avg_score": 8, "count": 1}]
 
 
 def test_get_insights_empty_database(conn):
     result = get_insights(conn, today=date(2026, 8, 4))
     assert result["monthly_trend"] == []
     assert result["by_process"]["all_time"] == []
+    assert result["by_origin_country"]["all_time"] == []
+    assert result["by_tasting_note"]["all_time"] == []
     assert result["most_repurchased"]["all_time"] == []
     assert result["recent_window"]["applicable"] is False
