@@ -44,6 +44,7 @@ adjust as needed.
 | `ANTHROPIC_API_KEY` | Your Anthropic API key. Only used for photo extraction. | none |
 | `APP_PORT` | Port the app listens on. | `8000` |
 | `PHOTOS_PATH` | Where uploaded photos are stored, relative to the app's working directory (resolves correctly both locally and in Docker). | `data/photos` |
+| `LOG_PATH` | Where application logs are written (rotates at 5MB, keeps 3 backups) - grab this file directly instead of digging through the Docker UI's Logs panel. | `data/logs/app.log` |
 | `RECENT_WINDOW_MONTHS` | How many months count as "recent" for insights. | `4` |
 | `RECENT_WINDOW_COUNT` | How many entries count as "recent" for insights. | `10` |
 
@@ -68,7 +69,8 @@ criteria.
 - [x] 0.2.1 - Extraction accuracy fix (process/region/variety confusion)
 - [x] 0.3.0 - Deploy on the primary Docker host (Docker, GHCR)
 - [x] 0.4.0 - Insights (stats and charts)
-- [ ] 0.5.0 - Photo-first identity (built - see 0.5.1 for the manual test that closes it)
+- [x] 0.5.0 - Photo-first identity
+- [ ] 0.6.0 - Exportable application logs
 - [ ] 1.0.0 - Stable
 - [ ] 1.1.0 - Fixing wrong data
 - [ ] 1.2.0 - Fuzzy repurchase matching

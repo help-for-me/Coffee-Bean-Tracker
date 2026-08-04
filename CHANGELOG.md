@@ -8,28 +8,34 @@ This project uses [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- Photo-first identity (0.5.0, built - the real-world manual test that
-  closes it is tracked separately as 0.5.1): a bag entry can now be saved
-  with just a photo and no typed roaster/bean name. A provisional bean
-  profile ("Unidentified") gets created immediately and either renamed in
-  place or merged into an existing profile once extraction resolves a
-  real identity - `entries.bean_profile_id` stays `NOT NULL` throughout,
-  no schema constraint change. Cafe cups still always require typed
+- Exportable application logs (0.6.0): logs now write to a rotating file
+  under the already-mounted `data/` volume (5MB cap, 3 backups) alongside
+  the existing stdout logging, so they survive restarts and are grabbable
+  directly from Unraid's file browser instead of the Docker UI's Logs
+  panel. Prompted directly by a 0.5.1 test attempt where an extraction
+  failure could only be diagnosed via a screenshot conversation.
+
+## [0.5.0] - 2026-08-04
+
+### Added
+- Photo-first identity: a bag entry can now be saved with just a photo
+  and no typed roaster/bean name. A provisional bean profile
+  ("Unidentified") gets created immediately and either renamed in place
+  or merged into an existing profile once extraction resolves a real
+  identity - `entries.bean_profile_id` stays `NOT NULL` throughout, no
+  schema constraint change. Cafe cups still always require typed
   identity. Extraction prompt now attempts roaster/bean name alongside
   everything else, but a typed name is never overwritten.
+- 0.5.1 real-world manual test passed: instant save and correct identity
+  resolution confirmed on an actual phone with a real bag. Also confirmed
+  the known exact-match limitation (deferred to 1.2.0's fuzzy matching) -
+  the same bag logged under slightly different OCR'd text created a
+  second profile instead of merging.
 
 ### Fixed
 - Export tab said "not currently scheduled to a specific milestone" -
   CSV export (alongside XLSX and GitHub backup) now has a real home in
   1.3.0, so it's actually tracked instead of left as an orphaned gap.
-
-### Changed
-- Roadmap: 0.5.1 (the real-world manual test that closes 0.5.0) marked
-  explicitly as not started, not scheduled to a date - waiting on
-  availability to test on a real device.
-- Roadmap: added 1.0.3, exportable application logs (high priority) -
-  prompted by a 0.5.1 test attempt where an extraction failure could only
-  be diagnosed via a screenshot conversation instead of an actual error.
 
 ## [0.4.0] - 2026-08-04
 
