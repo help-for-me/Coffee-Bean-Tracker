@@ -256,7 +256,18 @@ calculates them itself.
 
 ### 1.5.0 - Richer browsing
 History filter/sort controls, Insights attribute-switcher dropdown (beyond
-the fixed `process` grouping from 0.4.0).
+the fixed `process`/origin/tasting-note grouping from 0.4.0) - including
+`brew_style` (Pour Over/Espresso/French Press/Cafe-made/Other, already on
+`ratings` since 0.1.0, unused for insights until now) as a switchable
+dimension.
+
+- **Brew-method-sliced insights**, requested alongside the switcher: not
+  just "favourite tasting notes" but "favourite tasting notes *when
+  brewed as Espresso*" - the same bean can taste different depending on
+  brew method, so this is a real cross-tab (brew method x tasting
+  note/origin/process), not just one more flat ranked dimension like
+  0.4.0's breakdowns. Worth designing together with the attribute
+  switcher rather than bolting on separately.
 
 ### 1.6.0 - Ollama provider
 Low priority. `BeanExtractor` was designed swappable from 0.2.0 onward
