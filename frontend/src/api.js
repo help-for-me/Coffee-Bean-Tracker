@@ -9,6 +9,7 @@ async function request(path, options = {}) {
     const body = await response.json().catch(() => null)
     throw new Error(body?.detail ?? `Request failed: ${response.status}`)
   }
+  if (response.status === 204) return null
   return response.json()
 }
 
@@ -47,4 +48,28 @@ export function addRating(entryId, data) {
 
 export function getInsights() {
   return request('/insights')
+}
+
+export function photoUrl(photoId) {
+  return `${BASE_URL}/photos/${photoId}`
+}
+
+export function reextractEntry(id) {
+  return request(`/entries/${id}/reextract`, { method: 'POST' })
+}
+
+export function updateEntry(id, data) {
+  return request(`/entries/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+}
+
+export function deleteEntry(id) {
+  return request(`/entries/${id}`, { method: 'DELETE' })
+}
+
+export function updateRating(entryId, ratingId, data) {
+  return request(`/entries/${entryId}/ratings/${ratingId}`, { method: 'PATCH', body: JSON.stringify(data) })
+}
+
+export function deleteRating(entryId, ratingId) {
+  return request(`/entries/${entryId}/ratings/${ratingId}`, { method: 'DELETE' })
 }

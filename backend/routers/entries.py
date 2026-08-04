@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
@@ -5,7 +6,7 @@ from pydantic import ValidationError
 
 from .. import crud, database
 from ..extraction import run_extraction
-from ..models import EntryCreate, EntryOut, EntrySummary, RatingCreate
+from ..models import EntryCreate, EntryOut, EntrySummary, EntryUpdate, RatingCreate, RatingUpdate
 from ..photos import save_photo
 
 router = APIRouter(prefix="/entries", tags=["entries"])
@@ -76,6 +77,75 @@ def create_rating(entry_id: int, data: RatingCreate):
         if crud.get_entry(conn, entry_id) is None:
             raise HTTPException(status_code=404, detail="Entry not found")
         crud.add_rating(conn, entry_id, data)
+        return crud.get_entry(conn, entry_id)
+    finally:
+        conn.close()
+
+
+@router.patch("/{entry_id}", response_model=EntryOut)
+def update_entry(entry_id: int, data: EntryUpdate):
+    conn = database.get_connection()
+    try:
+        updated = crud.update_entry(conn, entry_id, data.model_dump(exclude_unset=True))
+        if not updated:
+            raise HTTPException(status_code=404, detail="Entry not found")
+        return crud.get_entry(conn, entry_id)
+    finally:
+        conn.close()
+
+
+@router.delete("/{entry_id}", status_code=204)
+def delete_entry(entry_id: int):
+    conn = database.get_connection()
+    try:
+        photo_paths = crud.delete_entry(conn, entry_id)
+    finally:
+        conn.close()
+    if photo_paths is None:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    for path in photo_paths:
+        Path(path).unlink(missing_ok=True)
+
+
+@router.post("/{entry_id}/reextract", response_model=EntryOut)
+def reextract_entry(entry_id: int, background_tasks: BackgroundTasks):
+    conn = database.get_connection()
+    try:
+        if crud.get_entry(conn, entry_id) is None:
+            raise HTTPException(status_code=404, detail="Entry not found")
+        photo_paths = crud.get_entry_photo_paths(conn, entry_id)
+        if not photo_paths:
+            raise HTTPException(status_code=422, detail="This entry has no photos to re-extract from.")
+        crud.mark_extraction_pending(conn, entry_id)
+        background_tasks.add_task(run_extraction, entry_id, photo_paths)
+        return crud.get_entry(conn, entry_id)
+    finally:
+        conn.close()
+
+
+@router.patch("/{entry_id}/ratings/{rating_id}", response_model=EntryOut)
+def update_rating(entry_id: int, rating_id: int, data: RatingUpdate):
+    conn = database.get_connection()
+    try:
+        if crud.get_entry(conn, entry_id) is None:
+            raise HTTPException(status_code=404, detail="Entry not found")
+        updated = crud.update_rating(conn, rating_id, data.model_dump(exclude_unset=True))
+        if not updated:
+            raise HTTPException(status_code=404, detail="Rating not found")
+        return crud.get_entry(conn, entry_id)
+    finally:
+        conn.close()
+
+
+@router.delete("/{entry_id}/ratings/{rating_id}", response_model=EntryOut)
+def delete_rating(entry_id: int, rating_id: int):
+    conn = database.get_connection()
+    try:
+        if crud.get_entry(conn, entry_id) is None:
+            raise HTTPException(status_code=404, detail="Entry not found")
+        deleted = crud.delete_rating(conn, rating_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Rating not found")
         return crud.get_entry(conn, entry_id)
     finally:
         conn.close()

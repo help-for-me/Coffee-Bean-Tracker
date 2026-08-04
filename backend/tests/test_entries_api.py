@@ -183,3 +183,146 @@ def test_create_bag_entry_with_photo_no_identity_extraction_resolves_it(client):
     body = follow_up.json()
     assert body["bean_profile"]["roaster"] == "Monogram"
     assert body["bean_profile"]["is_provisional"] is False
+
+
+# --- 0.7.0: fixing wrong data ---
+
+
+def test_patch_entry_updates_field(client):
+    entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=7).json()["id"]
+    response = client.patch(f"/entries/{entry_id}", json={"roast_level": "Medium"})
+    assert response.status_code == 200
+    assert response.json()["roast_level"] == "Medium"
+
+
+def test_patch_entry_can_clear_field_to_null(client):
+    entry_id = post_entry(
+        client, entry_type="bag", roaster="X", bean_name="Y", score=7, batch_number="L-1"
+    ).json()["id"]
+    response = client.patch(f"/entries/{entry_id}", json={"batch_number": None})
+    assert response.status_code == 200
+    assert response.json()["batch_number"] is None
+
+
+def test_patch_entry_missing_returns_404(client):
+    response = client.patch("/entries/999", json={"roast_level": "Medium"})
+    assert response.status_code == 404
+
+
+def test_delete_entry_removes_it(client):
+    entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=7).json()["id"]
+    response = client.delete(f"/entries/{entry_id}")
+    assert response.status_code == 204
+    assert client.get(f"/entries/{entry_id}").status_code == 404
+
+
+def test_delete_entry_removes_photo_file_from_disk(client, tmp_path):
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
+        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+    )
+    entry_id = response.json()["id"]
+    photo_id = response.json()["photos"][0]["id"]
+    assert client.get(f"/photos/{photo_id}").status_code == 200
+
+    client.delete(f"/entries/{entry_id}")
+
+    assert client.get(f"/photos/{photo_id}").status_code == 404
+
+
+def test_delete_entry_missing_returns_404(client):
+    assert client.delete("/entries/999").status_code == 404
+
+
+def test_reextract_entry_resets_to_pending(client):
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
+        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+    )
+    entry_id = response.json()["id"]
+    assert client.get(f"/entries/{entry_id}").json()["extraction_status"] == "failed"
+
+    reextract_response = client.post(f"/entries/{entry_id}/reextract")
+    assert reextract_response.status_code == 200
+    # TestClient runs the background task synchronously again, so by the
+    # time this returns it's already flipped back to failed (no real key) -
+    # the important thing is it went through 'pending' and didn't error.
+    assert reextract_response.json()["extraction_status"] in ("pending", "failed")
+
+
+def test_reextract_entry_without_photos_rejected(client):
+    entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=7).json()["id"]
+    response = client.post(f"/entries/{entry_id}/reextract")
+    assert response.status_code == 422
+
+
+def test_reextract_missing_entry_404(client):
+    assert client.post("/entries/999/reextract").status_code == 404
+
+
+def test_patch_rating_updates_score(client):
+    entry_response = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=6)
+    entry_id = entry_response.json()["id"]
+    rating_id = entry_response.json()["ratings"][0]["id"]
+
+    response = client.patch(f"/entries/{entry_id}/ratings/{rating_id}", json={"score": 9})
+    assert response.status_code == 200
+    assert response.json()["ratings"][0]["score"] == 9
+
+
+def test_patch_rating_missing_returns_404(client):
+    entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=6).json()["id"]
+    response = client.patch(f"/entries/{entry_id}/ratings/999", json={"score": 9})
+    assert response.status_code == 404
+
+
+def test_delete_rating_endpoint_removes_it(client):
+    entry_response = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=6)
+    entry_id = entry_response.json()["id"]
+    second_rating_id = client.post(f"/entries/{entry_id}/ratings", json={"score": 8}).json()["ratings"][1]["id"]
+
+    response = client.delete(f"/entries/{entry_id}/ratings/{second_rating_id}")
+    assert response.status_code == 200
+    assert len(response.json()["ratings"]) == 1
+
+
+def test_delete_rating_endpoint_missing_returns_404(client):
+    entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=6).json()["id"]
+    assert client.delete(f"/entries/{entry_id}/ratings/999").status_code == 404
+
+
+def test_get_photo_serves_file(client):
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
+        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+    )
+    photo_id = response.json()["photos"][0]["id"]
+    photo_response = client.get(f"/photos/{photo_id}")
+    assert photo_response.status_code == 200
+    assert photo_response.content == b"fake-image-bytes"
+
+
+def test_get_photo_missing_returns_404(client):
+    assert client.get("/photos/999").status_code == 404
+
+
+def test_entry_detail_includes_related_photos(client):
+    first = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "Monogram", "bean_name": "Mango", "score": 7})},
+        files=[("photos", ("bag1.jpg", b"fake-image-bytes-1", "image/jpeg"))],
+    ).json()
+    second = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "Monogram", "bean_name": "Mango", "score": 8})},
+        files=[("photos", ("bag2.jpg", b"fake-image-bytes-2", "image/jpeg"))],
+    ).json()
+
+    follow_up = client.get(f"/entries/{second['id']}")
+    body = follow_up.json()
+    assert len(body["photos"]) == 1
+    assert len(body["related_photos"]) == 1
+    assert body["related_photos"][0]["entry_id"] == first["id"]

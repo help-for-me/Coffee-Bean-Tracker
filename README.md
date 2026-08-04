@@ -71,7 +71,7 @@ criteria.
 - [x] 0.4.0 - Insights (stats and charts)
 - [x] 0.5.0 - Photo-first identity
 - [x] 0.6.0 - Exportable application logs
-- [ ] 0.7.0 - Fixing wrong data
+- [x] 0.7.0 - Fixing wrong data
 - [ ] 0.8.0 - Fuzzy repurchase matching
 - [ ] 0.9.0 - AI narrative insights
 - [ ] 1.0.0 - Stable

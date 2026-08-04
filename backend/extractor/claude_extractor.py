@@ -85,7 +85,12 @@ before filing it:
   - Peach - Tropical Fruits"), split it: "Castillo" is the variety,
   "Honey" is the process, and only the flavor words belong in
   printed_tasting_notes. Common single words are easy to misfile: "Honey"
-  and "Natural" are almost always a process, not a tasting note.
+  and "Natural" are almost always a process, not a tasting note. Also
+  exclude product-category/packaging text, which is easy to mistake for a
+  notes list because it's often printed right next to one: bilingual
+  labels are common (e.g. "Whole Bean Coffee / Grains de café", "Ground
+  Coffee / Café moulu" on Canadian bags) - these describe the product
+  format, not the flavor, and belong in neither this field nor any other.
 
 Reference vocabulary (not exhaustive — real labels use plenty of valid
 terms outside these lists, so don't force a fit if the label clearly says

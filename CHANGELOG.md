@@ -7,6 +7,30 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-04
+
+### Added
+- Entry Detail now shows the photo(s) actually uploaded for that entry,
+  plus photos from other entries of the same bean (same
+  `bean_profile_id`) for comparison against a blurry or bad shot. Served
+  via `GET /photos/{id}`, keyed off the `entry_photos` primary key so the
+  file path is never client-supplied.
+- "Re-run AI extraction" button on Entry Detail
+  (`POST /entries/{id}/reextract`) - re-triggers extraction against the
+  entry's own saved photos in the background, for cases where a prompt
+  fix or a retry might do better the second time.
+- Real edit/delete UI for saved entries and ratings: bag-detail fields
+  and ratings can now be corrected or removed after the fact
+  (`PATCH`/`DELETE /entries/{id}`, `PATCH`/`DELETE
+  /entries/{id}/ratings/{rating_id}`), closing the "fast one-way log"
+  gap from 0.1.0. Entry deletion cascades its ratings, photos, and farm
+  rows and removes photo files from disk, not just their DB rows.
+
+### Fixed
+- Bilingual packaging text (e.g. "Whole Bean Coffee / Grains de café" on
+  a Canadian bag) no longer leaks into `printed_tasting_notes` -
+  extraction prompt now explicitly excludes it as a product-type label.
+
 ## [0.6.0] - 2026-08-04
 
 ### Added

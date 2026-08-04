@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BeanProfileAutocomplete from '../components/BeanProfileAutocomplete'
 import AdvancedRatingFields from '../components/AdvancedRatingFields'
+import Field from '../components/Field'
 import { createEntry } from '../api'
 import { emptyAdvancedRating, ratingPayloadFromAdvanced } from '../utils/ratingPayload'
 
@@ -273,19 +274,5 @@ export default function NewEntry() {
         {submitting ? 'Saving...' : 'Save'}
       </button>
     </form>
-  )
-}
-
-function Field({ label, value, onChange, type = 'text' }) {
-  return (
-    <div>
-      <label className="block text-xs text-gray-600">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1"
-      />
-    </div>
   )
 }
