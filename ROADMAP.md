@@ -234,3 +234,7 @@ specific sub-version:
 - Web-lookup enrichment: describe a bean by text or photo, app searches
   the internet to fill in the gaps - explicitly the lowest priority idea
   on this whole list
+- Human-readable photo filenames: currently `{entry_id}_{yyyymmdd}_{upload_order}.jpg`
+  (e.g. `2_20260803_1.jpg`), meaningless without cross-referencing the
+  database. Include the roaster/bean name or some other identifiable key
+  so browsing the photos folder directly on disk is actually useful.
