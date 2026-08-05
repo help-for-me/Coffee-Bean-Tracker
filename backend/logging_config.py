@@ -33,3 +33,16 @@ def setup_logging() -> None:
     file_handler = RotatingFileHandler(LOG_PATH, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT)
     file_handler.setFormatter(formatter)
     root.addHandler(file_handler)
+
+    # Uvicorn configures its own handlers on these loggers with
+    # propagate=False, so by default its startup messages and its
+    # per-request access log ("GET /api/insights 200 OK", with the
+    # client's IP) never reach the handlers above - only stdout. Clearing
+    # their handlers and turning propagation back on routes those same
+    # messages through root's handlers too, so the exportable file ends up
+    # with a complete picture: normal traffic and crashes alike, not just
+    # whatever this app's own code explicitly logs.
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        uvicorn_logger = logging.getLogger(name)
+        uvicorn_logger.handlers.clear()
+        uvicorn_logger.propagate = True

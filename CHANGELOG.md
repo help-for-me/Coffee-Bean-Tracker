@@ -7,6 +7,18 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Logging now captures what it needs to for the 1.0.1/1.0.2 manual tests
+  to be completed by reviewing the exported log file, rather than tracked
+  by hand: every entry (type, typed-vs-photo identity, score) and every
+  rating is logged as it's created, the app logs its current entry/
+  rating/photo counts on every startup (so a container restart's before-
+  and-after numbers are directly comparable), any request slower than 3
+  seconds is flagged, and any unhandled error is now logged with a full
+  traceback instead of silently returning an error with nothing recorded
+  anywhere. Uvicorn's own request log (method, path, status, client IP)
+  now also reaches the file - previously it only went to stdout.
+
 ### Fixed
 - All API routes now live under `/api` - previously the API and the
   frontend used some of the same paths (e.g. both had an `/insights`),

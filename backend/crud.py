@@ -469,3 +469,14 @@ def save_narrative(conn: sqlite3.Connection, window_type: str, summary_text: str
         (cursor.lastrowid,),
     ).fetchone()
     return dict(row)
+
+
+def get_counts(conn: sqlite3.Connection) -> dict:
+    # Logged on every startup (see main.py) so a container restart's
+    # before/after counts can be compared directly from the log file,
+    # without having to click through the app to check nothing was lost.
+    return {
+        "entries": conn.execute("SELECT COUNT(*) AS n FROM entries").fetchone()["n"],
+        "ratings": conn.execute("SELECT COUNT(*) AS n FROM ratings").fetchone()["n"],
+        "photos": conn.execute("SELECT COUNT(*) AS n FROM entry_photos").fetchone()["n"],
+    }
