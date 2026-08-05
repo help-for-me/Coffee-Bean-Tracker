@@ -557,6 +557,34 @@ own site specifically, not a general web search.
 
 ---
 
+## AI-suggested features
+
+Ideas Claude has floated unprompted, not requested by the user. **None of
+these get built without explicit agreement first** - this list exists so a
+good idea doesn't get lost, not as an approved backlog. Move an item out of
+this section (into a real MINOR/MAJOR slot, or MAJOR 2's candidate list
+below) once it's actually been agreed to; drop it entirely if it turns out
+not to be wanted. Sits here, between MAJOR 1 and MAJOR 2, because that's
+exactly what it is: a parking lot for ideas that haven't yet been sorted
+into either a firm, numbered commitment (MAJOR 1) or the looser
+candidate list below (MAJOR 2) - not a phase of its own.
+
+- **Freshness flag on entries.** `roast_date` is already captured for most
+  bags - flag or visually mark entries past a typical peak-freshness
+  window (roughly 2-8 weeks post-roast depending on process) on History/
+  Entry Detail, so a stale bag doesn't get blamed on the bean itself.
+- **Cost-per-cup / value ranking.** `price_paid` and `bag_weight_g` are
+  already captured - a "best value" ranking (score relative to $/100g or
+  estimated $/cup) alongside the existing "best score" rankings in
+  Insights, for the days budget matters as much as flavour.
+- **Proactive repeat-purchase surfacing.** 0.8.0's fuzzy matching already
+  merges a re-typed identity into the right profile after the fact - this
+  would surface it *before* saving ("You've had this before, rated it
+  8.5 on 2026-06-01") right in the New Entry form, using the same fuzzy
+  match while typing rather than only on submit.
+
+---
+
 ## MAJOR 2 - Blank slate
 
 Deliberately unplanned. General candidates so far, not pinned to any
@@ -591,31 +619,6 @@ specific sub-version:
   UI text and the wording instruction sent to the AI for generated
   content (e.g. the Insights summary), not extracted bag text, which is
   always copied verbatim from the label regardless of this setting.
-
----
-
-## AI-suggested features
-
-Ideas Claude has floated unprompted, not requested by the user. **None of
-these get built without explicit agreement first** - this list exists so a
-good idea doesn't get lost, not as an approved backlog. Move an item out of
-this section (into a real MINOR/MAJOR slot, or MAJOR 2's candidate list)
-once it's actually been agreed to; drop it entirely if it turns out not to
-be wanted.
-
-- **Freshness flag on entries.** `roast_date` is already captured for most
-  bags - flag or visually mark entries past a typical peak-freshness
-  window (roughly 2-8 weeks post-roast depending on process) on History/
-  Entry Detail, so a stale bag doesn't get blamed on the bean itself.
-- **Cost-per-cup / value ranking.** `price_paid` and `bag_weight_g` are
-  already captured - a "best value" ranking (score relative to $/100g or
-  estimated $/cup) alongside the existing "best score" rankings in
-  Insights, for the days budget matters as much as flavour.
-- **Proactive repeat-purchase surfacing.** 0.8.0's fuzzy matching already
-  merges a re-typed identity into the right profile after the fact - this
-  would surface it *before* saving ("You've had this before, rated it
-  8.5 on 2026-06-01") right in the New Entry form, using the same fuzzy
-  match while typing rather than only on submit.
 
 ---
 
