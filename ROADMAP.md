@@ -440,6 +440,15 @@ before relying on it.
 Low priority. Takes over `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` from
 env vars, using the `settings` table already present in the schema.
 
+- **Plain-language prompt editing.** A section for adjusting the
+  extraction prompt (`claude_extractor.py`) and the narrative insight
+  prompt (`claude_generator.py`) without touching code - type an
+  instruction in plain English (e.g. "always exclude bilingual packaging
+  text" or "keep the insight summary to one sentence") and it's folded
+  into the underlying prompt template. Replaces having to wait on a code
+  change (like 0.7.0's known-issues list, or the post-launch narrative-
+  length fix) for this kind of adjustment.
+
 ### 1.5.0 - Multi-user/auth
 Low priority. Uses the `users` table and nullable `user_id` columns already
 present in the schema since 0.1.0.

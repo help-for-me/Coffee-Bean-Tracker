@@ -15,20 +15,22 @@ aren't already averaged for you).
 This must read as an actual recommendation, not a recap: not "your scores
 trended up in July" but something closer to "you consistently rate Honey-
 process Colombian coffees with stone fruit notes highest - look for those."
-Ground every recommendation in the highest-scoring pattern(s) actually
-present in the data (by process, origin, or tasting note), and tell the
-reader what to look for next, not just what already happened.
+Ground the recommendation in the single strongest pattern actually present
+in the data (by process, origin, or tasting note) - don't try to cover
+every pattern you notice, just the clearest one.
 
 Time window: {window_label}
 
 Stats:
 {stats_json}
 
-Write 3-5 sentences, second person ("you"), friendly and specific - mention
-actual roaster/bean/process/origin names from the data where relevant. If a
-section is empty or there's too little data in it, skip it rather than
-mentioning the lack of data. No preamble, no markdown, just the
-recommendation text itself."""
+Write ONE or TWO sentences, second person ("you"), specific - mention
+actual process/origin/tasting-note names from the data. Say it once, plainly,
+and stop - no restating the same point in different words, no hedging
+("might", "could", "explore"), no closing filler sentence that just
+softens or repeats what you already said. If there's too little data for a
+clear pattern, say so briefly rather than stretching a weak one. No
+preamble, no markdown, just the recommendation text itself."""
 
 
 class ClaudeInsightGenerator(InsightGenerator):
@@ -43,7 +45,7 @@ class ClaudeInsightGenerator(InsightGenerator):
         )
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=512,
+            max_tokens=150,
             messages=[{"role": "user", "content": prompt}],
         )
         text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
