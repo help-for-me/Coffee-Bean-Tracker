@@ -2,11 +2,11 @@ import json
 
 
 def post_entry(client, **fields):
-    return client.post("/entries", data={"data": json.dumps(fields)})
+    return client.post("/api/entries", data={"data": json.dumps(fields)})
 
 
 def test_insights_endpoint_empty_database(client):
-    response = client.get("/insights")
+    response = client.get("/api/insights")
     assert response.status_code == 200
     body = response.json()
     assert body["monthly_trend"] == []
@@ -26,7 +26,7 @@ def test_insights_endpoint_reflects_real_entries(client):
         origin_country="Colombia",
         printed_tasting_notes="Chocolate, Caramel",
     )
-    response = client.get("/insights")
+    response = client.get("/api/insights")
     assert response.status_code == 200
     body = response.json()
     assert body["by_process"]["all_time"] == [{"process": "Washed", "avg_score": 8, "count": 1}]
@@ -40,7 +40,7 @@ def test_insights_endpoint_reflects_real_entries(client):
 
 
 def test_get_narrative_returns_null_when_none_generated(client):
-    response = client.get("/insights/narrative")
+    response = client.get("/api/insights/narrative")
     assert response.status_code == 200
     assert response.json() is None
 
@@ -50,22 +50,22 @@ def test_post_narrative_without_api_key_returns_502(client):
     # ClaudeInsightGenerator fails to construct, and that must surface as
     # a clean error response, not a crash.
     post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
-    response = client.post("/insights/narrative")
+    response = client.post("/api/insights/narrative")
     assert response.status_code == 502
-    assert client.get("/insights/narrative").json() is None
+    assert client.get("/api/insights/narrative").json() is None
 
 
 def test_post_narrative_error_does_not_leak_exception_text(client):
     # Security hardening: the response must never echo back raw exception
     # text (which could reveal internal details) - just a generic message.
-    response = client.post("/insights/narrative")
+    response = client.post("/api/insights/narrative")
     assert "ANTHROPIC_API_KEY" not in response.text
     assert response.json()["detail"] == "Insight generation failed. Check the server logs."
 
 
 def test_post_narrative_second_immediate_call_is_cooled_down(client):
-    first = client.post("/insights/narrative")
+    first = client.post("/api/insights/narrative")
     assert first.status_code == 502  # no API key, but the attempt still counts
 
-    second = client.post("/insights/narrative")
+    second = client.post("/api/insights/narrative")
     assert second.status_code == 429

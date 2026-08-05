@@ -1,47 +1,33 @@
 const BREW_STYLES = ['Pour Over', 'Espresso', 'French Press', 'Cafe-made', 'Other']
 const REPURCHASE_OPTIONS = ['yes', 'no', 'maybe']
+// The three 0-10 sliders below (Acidity, Body, Sweetness) are identical
+// except for label and which field they edit, so they're generated from
+// this list instead of repeating the same input three times.
+const SCORE_FIELDS = [
+  { key: 'acidityScore', label: 'Acidity' },
+  { key: 'bodyScore', label: 'Body' },
+  { key: 'sweetnessScore', label: 'Sweetness' },
+]
 
 export default function AdvancedRatingFields({ value, onChange }) {
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value })
 
   return (
     <div className="mb-4 grid grid-cols-2 gap-3 rounded-md border border-gray-200 p-3">
-      <div>
-        <label className="block text-xs text-gray-600">Acidity</label>
-        <input
-          type="number"
-          min="0"
-          max="10"
-          step="0.5"
-          value={value.acidityScore}
-          onChange={set('acidityScore')}
-          className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-        />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-600">Body</label>
-        <input
-          type="number"
-          min="0"
-          max="10"
-          step="0.5"
-          value={value.bodyScore}
-          onChange={set('bodyScore')}
-          className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-        />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-600">Sweetness</label>
-        <input
-          type="number"
-          min="0"
-          max="10"
-          step="0.5"
-          value={value.sweetnessScore}
-          onChange={set('sweetnessScore')}
-          className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-        />
-      </div>
+      {SCORE_FIELDS.map(({ key, label }) => (
+        <div key={key}>
+          <label className="block text-xs text-gray-600">{label}</label>
+          <input
+            type="number"
+            min="0"
+            max="10"
+            step="0.5"
+            value={value[key]}
+            onChange={set(key)}
+            className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+          />
+        </div>
+      ))}
       <div>
         <label className="block text-xs text-gray-600">Brew style</label>
         <select
