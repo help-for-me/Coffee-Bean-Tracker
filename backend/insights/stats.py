@@ -51,7 +51,9 @@ def _trend_direction(scores: list[float]) -> str:
     return "flat"
 
 
-def average_score_by_process(conn: sqlite3.Connection, since: Optional[date] = None) -> list[dict]:
+def average_score_by_process(
+    conn: sqlite3.Connection, since: Optional[date] = None, brew_style: Optional[str] = None
+) -> list[dict]:
     sql = """
         SELECT e.process AS process, AVG(r.score) AS avg_score, COUNT(*) AS count
         FROM ratings r
@@ -62,12 +64,15 @@ def average_score_by_process(conn: sqlite3.Connection, since: Optional[date] = N
     if since:
         sql += " AND r.date_entered >= ?"
         params.append(since.isoformat())
+    if brew_style:
+        sql += " AND r.brew_style = ?"
+        params.append(brew_style)
     sql += " GROUP BY e.process ORDER BY avg_score DESC"
     return [dict(row) for row in conn.execute(sql, params).fetchall()]
 
 
 def average_score_by_origin_country(
-    conn: sqlite3.Connection, since: Optional[date] = None, limit: int = 10
+    conn: sqlite3.Connection, since: Optional[date] = None, limit: int = 10, brew_style: Optional[str] = None
 ) -> list[dict]:
     sql = """
         SELECT e.origin_country AS origin_country, AVG(r.score) AS avg_score, COUNT(*) AS count
@@ -79,8 +84,25 @@ def average_score_by_origin_country(
     if since:
         sql += " AND r.date_entered >= ?"
         params.append(since.isoformat())
+    if brew_style:
+        sql += " AND r.brew_style = ?"
+        params.append(brew_style)
     sql += " GROUP BY e.origin_country ORDER BY avg_score DESC LIMIT ?"
     params.append(limit)
+    return [dict(row) for row in conn.execute(sql, params).fetchall()]
+
+
+def average_score_by_brew_style(conn: sqlite3.Connection, since: Optional[date] = None) -> list[dict]:
+    sql = """
+        SELECT r.brew_style AS brew_style, AVG(r.score) AS avg_score, COUNT(*) AS count
+        FROM ratings r
+        WHERE r.brew_style IS NOT NULL
+    """
+    params: list = []
+    if since:
+        sql += " AND r.date_entered >= ?"
+        params.append(since.isoformat())
+    sql += " GROUP BY r.brew_style ORDER BY avg_score DESC"
     return [dict(row) for row in conn.execute(sql, params).fetchall()]
 
 
@@ -89,7 +111,7 @@ def _split_notes(raw: str) -> list[str]:
 
 
 def average_score_by_tasting_note(
-    conn: sqlite3.Connection, since: Optional[date] = None, limit: int = 10
+    conn: sqlite3.Connection, since: Optional[date] = None, limit: int = 10, brew_style: Optional[str] = None
 ) -> list[dict]:
     sql = """
         SELECT e.printed_tasting_notes AS notes, r.score AS score
@@ -101,6 +123,9 @@ def average_score_by_tasting_note(
     if since:
         sql += " AND r.date_entered >= ?"
         params.append(since.isoformat())
+    if brew_style:
+        sql += " AND r.brew_style = ?"
+        params.append(brew_style)
     rows = conn.execute(sql, params).fetchall()
 
     buckets: dict[str, list[float]] = {}
@@ -167,7 +192,7 @@ def most_repurchased(conn: sqlite3.Connection, since: Optional[date] = None, lim
     return results[:limit]
 
 
-def get_insights(conn: sqlite3.Connection, today: Optional[date] = None) -> dict:
+def get_insights(conn: sqlite3.Connection, today: Optional[date] = None, brew_style: Optional[str] = None) -> dict:
     if today is None:
         today = date.today()
 
@@ -184,16 +209,23 @@ def get_insights(conn: sqlite3.Connection, today: Optional[date] = None) -> dict
     return {
         "monthly_trend": monthly_rating_trend(conn),
         "by_process": {
-            "all_time": average_score_by_process(conn),
-            "recent": average_score_by_process(conn, since=since) if since else [],
+            "all_time": average_score_by_process(conn, brew_style=brew_style),
+            "recent": average_score_by_process(conn, since=since, brew_style=brew_style) if since else [],
         },
         "by_origin_country": {
-            "all_time": average_score_by_origin_country(conn),
-            "recent": average_score_by_origin_country(conn, since=since) if since else [],
+            "all_time": average_score_by_origin_country(conn, brew_style=brew_style),
+            "recent": average_score_by_origin_country(conn, since=since, brew_style=brew_style) if since else [],
         },
         "by_tasting_note": {
-            "all_time": average_score_by_tasting_note(conn),
-            "recent": average_score_by_tasting_note(conn, since=since) if since else [],
+            "all_time": average_score_by_tasting_note(conn, brew_style=brew_style),
+            "recent": average_score_by_tasting_note(conn, since=since, brew_style=brew_style) if since else [],
+        },
+        # Not sliced by brew_style like the three breakdowns above - it *is*
+        # the brew-method dimension, so filtering it by a single brew style
+        # would collapse it down to the one row you asked for.
+        "by_brew_style": {
+            "all_time": average_score_by_brew_style(conn),
+            "recent": average_score_by_brew_style(conn, since=since) if since else [],
         },
         "most_repurchased": {
             "all_time": most_repurchased(conn),

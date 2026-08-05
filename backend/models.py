@@ -8,6 +8,7 @@ CoFermentStatus = Literal["yes", "no", "unknown"]
 BrewStyle = Literal["Pour Over", "Espresso", "French Press", "Cafe-made", "Other"]
 Repurchase = Literal["yes", "no", "maybe"]
 WindowType = Literal["all_time", "recent"]
+EntrySort = Literal["date_desc", "date_asc", "score_desc", "score_asc"]
 
 
 class RatingFields(BaseModel):
@@ -184,6 +185,12 @@ class TastingNoteStat(BaseModel):
     count: int
 
 
+class BrewStyleStat(BaseModel):
+    brew_style: str
+    avg_score: float
+    count: int
+
+
 class RepurchasedItem(BaseModel):
     roaster: str
     bean_name: str
@@ -212,6 +219,11 @@ class ByTastingNote(BaseModel):
     recent: list[TastingNoteStat]
 
 
+class ByBrewStyle(BaseModel):
+    all_time: list[BrewStyleStat]
+    recent: list[BrewStyleStat]
+
+
 class MostRepurchased(BaseModel):
     all_time: list[RepurchasedItem]
     recent: list[RepurchasedItem]
@@ -222,6 +234,7 @@ class InsightsOut(BaseModel):
     by_process: ByProcess
     by_origin_country: ByOriginCountry
     by_tasting_note: ByTastingNote
+    by_brew_style: ByBrewStyle
     most_repurchased: MostRepurchased
     recent_window: RecentWindow
 

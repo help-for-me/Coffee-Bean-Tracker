@@ -32,10 +32,12 @@ export function createEntry(data, photos = []) {
   return request('/entries', { method: 'POST', body: formData, headers: {} })
 }
 
-export function listEntries({ q, limit } = {}) {
+export function listEntries({ q, limit, entryType, sort } = {}) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (limit) params.set('limit', limit)
+  if (entryType) params.set('entry_type', entryType)
+  if (sort) params.set('sort', sort)
   const qs = params.toString()
   return request(`/entries${qs ? `?${qs}` : ''}`)
 }
@@ -51,8 +53,11 @@ export function addRating(entryId, data) {
   })
 }
 
-export function getInsights() {
-  return request('/insights')
+export function getInsights(brewStyle) {
+  const params = new URLSearchParams()
+  if (brewStyle) params.set('brew_style', brewStyle)
+  const qs = params.toString()
+  return request(`/insights${qs ? `?${qs}` : ''}`)
 }
 
 export function getNarrative(window_) {

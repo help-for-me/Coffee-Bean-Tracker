@@ -36,6 +36,31 @@ def test_insights_endpoint_reflects_real_entries(client):
     assert body["monthly_trend"][0]["count"] == 1
 
 
+# --- 1.2.0: brew-method-sliced insights ---
+
+
+def test_insights_endpoint_includes_brew_style_breakdown(client):
+    post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8, brew_style="Espresso")
+    response = client.get("/api/insights")
+    body = response.json()
+    assert body["by_brew_style"]["all_time"] == [{"brew_style": "Espresso", "avg_score": 8, "count": 1}]
+
+
+def test_insights_endpoint_brew_style_filter_slices_breakdowns(client):
+    post_entry(client, entry_type="bag", roaster="A", bean_name="A", score=8, process="Washed", brew_style="Espresso")
+    post_entry(client, entry_type="bag", roaster="B", bean_name="B", score=4, process="Washed", brew_style="Pour Over")
+
+    response = client.get("/api/insights", params={"brew_style": "Espresso"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["by_process"]["all_time"] == [{"process": "Washed", "avg_score": 8, "count": 1}]
+
+
+def test_insights_endpoint_rejects_unknown_brew_style(client):
+    response = client.get("/api/insights", params={"brew_style": "not-a-real-style"})
+    assert response.status_code == 422
+
+
 # --- AI narrative insights (0.9.0) ---
 
 

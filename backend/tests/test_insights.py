@@ -5,6 +5,7 @@ from backend.insights.stats import (
     _months_ago,
     _split_notes,
     _trend_direction,
+    average_score_by_brew_style,
     average_score_by_origin_country,
     average_score_by_process,
     average_score_by_tasting_note,
@@ -17,7 +18,10 @@ from backend.insights.stats import (
 from backend.models import EntryCreate
 
 
-def _rate_at(conn, roaster, bean_name, score, when, process=None, origin_country=None, printed_tasting_notes=None):
+def _rate_at(
+    conn, roaster, bean_name, score, when,
+    process=None, origin_country=None, printed_tasting_notes=None, brew_style=None,
+):
     # Bypasses the normal create_entry/add_rating flow so date_entered can
     # be backdated precisely - real inserts always stamp "now".
     data = EntryCreate(
@@ -28,6 +32,7 @@ def _rate_at(conn, roaster, bean_name, score, when, process=None, origin_country
         process=process,
         origin_country=origin_country,
         printed_tasting_notes=printed_tasting_notes,
+        brew_style=brew_style,
     )
     entry_id = crud.create_entry(conn, data)
     with conn:
@@ -147,6 +152,14 @@ def test_average_score_by_process_since_filters_by_date(conn):
     assert recent[0]["avg_score"] == 9
 
 
+def test_average_score_by_process_filters_by_brew_style(conn):
+    _rate_at(conn, "Stumptown", "Hair Bender", 5, date(2026, 7, 1), process="Washed", brew_style="Espresso")
+    _rate_at(conn, "Intelligentsia", "Black Cat", 9, date(2026, 7, 2), process="Washed", brew_style="Pour Over")
+
+    espresso_only = average_score_by_process(conn, brew_style="Espresso")
+    assert espresso_only == [{"process": "Washed", "avg_score": 5, "count": 1}]
+
+
 # --- _split_notes ---
 
 
@@ -213,6 +226,25 @@ def test_average_score_by_tasting_note_ranked_best_first(conn):
     assert results[0]["note"] == "Chocolate"
 
 
+# --- average_score_by_brew_style ---
+
+
+def test_average_score_by_brew_style_groups_and_averages(conn):
+    _rate_at(conn, "Stumptown", "Hair Bender", 8, date(2026, 7, 1), brew_style="Espresso")
+    _rate_at(conn, "Intelligentsia", "Black Cat", 6, date(2026, 7, 2), brew_style="Espresso")
+    _rate_at(conn, "Monogram", "Mango", 9, date(2026, 7, 3), brew_style="Pour Over")
+
+    results = {r["brew_style"]: r for r in average_score_by_brew_style(conn)}
+    assert results["Espresso"]["avg_score"] == 7
+    assert results["Espresso"]["count"] == 2
+    assert results["Pour Over"]["avg_score"] == 9
+
+
+def test_average_score_by_brew_style_excludes_null(conn):
+    _rate_at(conn, "Stumptown", "Hair Bender", 8, date(2026, 7, 1), brew_style=None)
+    assert average_score_by_brew_style(conn) == []
+
+
 # --- monthly_rating_trend ---
 
 
@@ -268,7 +300,33 @@ def test_get_insights_recent_window_not_applicable_with_sparse_data(conn):
     assert result["by_process"]["recent"] == []
     assert result["by_origin_country"]["recent"] == []
     assert result["by_tasting_note"]["recent"] == []
+    assert result["by_brew_style"]["recent"] == []
     assert result["most_repurchased"]["recent"] == []
+
+
+def test_get_insights_includes_brew_style_breakdown(conn):
+    _rate_at(conn, "Stumptown", "Hair Bender", 8, date(2026, 7, 1), brew_style="Espresso")
+    result = get_insights(conn, today=date(2026, 8, 4))
+    assert result["by_brew_style"]["all_time"] == [{"brew_style": "Espresso", "avg_score": 8, "count": 1}]
+
+
+def test_get_insights_brew_style_filter_slices_process_origin_and_notes(conn):
+    _rate_at(
+        conn, "Stumptown", "Hair Bender", 8, date(2026, 7, 1),
+        process="Washed", origin_country="Colombia", printed_tasting_notes="Chocolate", brew_style="Espresso",
+    )
+    _rate_at(
+        conn, "Intelligentsia", "Black Cat", 4, date(2026, 7, 2),
+        process="Washed", origin_country="Colombia", printed_tasting_notes="Chocolate", brew_style="Pour Over",
+    )
+
+    result = get_insights(conn, today=date(2026, 8, 4), brew_style="Espresso")
+    assert result["by_process"]["all_time"] == [{"process": "Washed", "avg_score": 8, "count": 1}]
+    assert result["by_origin_country"]["all_time"] == [{"origin_country": "Colombia", "avg_score": 8, "count": 1}]
+    assert result["by_tasting_note"]["all_time"] == [{"note": "Chocolate", "avg_score": 8, "count": 1}]
+    # by_brew_style itself is never sliced by the brew_style filter - it's
+    # the dimension being filtered on, not one more thing to filter.
+    assert {r["brew_style"] for r in result["by_brew_style"]["all_time"]} == {"Espresso", "Pour Over"}
 
 
 def test_get_insights_includes_origin_and_tasting_note_breakdowns(conn):

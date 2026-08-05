@@ -19,6 +19,14 @@ This project uses [Semantic Versioning](https://semver.org/).
   background refresh never spends an API call on its own.
 
 ### Added
+- Richer browsing: History now has entry-type and sort (newest/oldest/
+  highest/lowest score) controls. Insights' three separate "Favourite
+  tasting notes/origin countries/processes" charts became one chart
+  behind a dropdown, with a new "Brew methods" option alongside them
+  (`brew_style` was already collected per rating, unused for insights
+  until now) - plus a second dropdown to slice whichever attribute is
+  showing down to a single brew method (e.g. "favourite tasting notes
+  when brewed as Espresso").
 - Logging now captures what it needs to for the 1.0.1/1.0.2 manual tests
   to be completed by reviewing the exported log file, rather than tracked
   by hand: every entry (type, typed-vs-photo identity, score) and every
