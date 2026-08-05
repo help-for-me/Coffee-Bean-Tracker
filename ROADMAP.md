@@ -502,6 +502,59 @@ JSON keeps the structure exact so a restore is reliable. CSV (MVP) and
 XLSX (1.1.0) stay as human-readable reports for opening in a spreadsheet,
 not as a re-import source.
 
+### 1.8.0 - Insights: roaster view, note trends, map, nudge
+Four items moved out of "AI-suggested features" below on 2026-08-05 once
+agreed to. All four are additions to the existing Insights page, no new
+data collected - everything they need is already logged.
+
+- **Roaster-level leaderboard.** Every existing Insights ranking groups by
+  bean; grouping by roaster instead (average across everything from a
+  given roaster) answers a different, also-useful question - "which
+  roasters do I trust," not just "which specific bag." Natural fit
+  alongside 1.2.0's attribute switcher, once that's merged.
+- **Tasting-note trends over time.** The favourite-notes ranking (0.4.0)
+  is a snapshot; a month-by-month view of which notes show up and how
+  they score would show a palate shifting over time, not just where it
+  currently stands.
+- **Origin map view.** A simple world map shading the countries logged so
+  far (by count or average score) - Insights' rankings are all lists;
+  this would be the one visual/spatial view.
+- **"Try something new" nudge.** If recent entries cluster heavily on 1-2
+  roasters, a gentle suggestion to branch out - based purely on your own
+  logged patterns here; 1.9.0 below could eventually feed it richer
+  suggestions, but this piece doesn't depend on that.
+
+### 1.9.0 - Roaster website enrichment
+Supersedes MAJOR 2's old "Web-lookup enrichment" stub - formalized here
+2026-08-05 with a real design, agreed to rather than left speculative.
+Extraction today only knows what's printed on the bag/menu; this looks up
+the roaster's own website for the same bean and fills in whatever the
+website has that the label doesn't (fuller origin/farm detail, process
+notes, tasting notes, roaster's own copy) - first pass is the roaster's
+own site specifically, not a general web search.
+
+- **Trigger: both.** An automatic first-pass lookup the first time a
+  roaster is seen (background job, mirrors the AI photo extraction
+  pattern), plus a manual "reprocess" button available any time after
+  (mirrors 0.7.0's re-extract button).
+- **Source storage: raw HTML**, saved locally alongside the entry/bean
+  profile it informed - picked specifically because it's the cheapest
+  format to both store and reprocess (re-run extraction against a saved
+  page with no new network fetch needed), unlike a PDF snapshot which
+  would need a headless-browser render step to produce and isn't
+  practical to feed back through text extraction later.
+- **Reprocess flow, on manual request:** first surface a short summary of
+  which source(s) the original lookup used and an assessment of whether
+  that source still looks reliable/current for this bean. If it does,
+  reprocess is fast and free of new network calls - re-run extraction
+  against the already-saved HTML. If it doesn't (site restructured,
+  product delisted, content that no longer matches), go back out and
+  search for a better source instead of trusting the stale copy.
+- Not yet decided: exactly how a saved source gets judged "reliable" (an
+  AI judgment call as part of generating that summary is the likely
+  shape, given the same pattern the narrative/extraction prompts already
+  use) - fine to settle at build time, doesn't block scoping this now.
+
 ---
 
 ## MAJOR 2 - Blank slate
@@ -518,9 +571,6 @@ specific sub-version:
   this only makes *installing* it nicer.
 - Unraid Community Applications feed listing (public template submission)
 - Proxmox VE Helper-Scripts install script (community submission)
-- Web-lookup enrichment: describe a bean by text or photo, app searches
-  the internet to fill in the gaps - explicitly the lowest priority idea
-  on this whole list
 - Human-readable photo filenames: currently `{entry_id}_{yyyymmdd}_{upload_order}.jpg`
   (e.g. `2_20260803_1.jpg`), meaningless without cross-referencing the
   database. Include the roaster/bean name or some other identifiable key
@@ -561,25 +611,11 @@ be wanted.
   already captured - a "best value" ranking (score relative to $/100g or
   estimated $/cup) alongside the existing "best score" rankings in
   Insights, for the days budget matters as much as flavour.
-- **Roaster-level leaderboard.** Every existing Insights ranking groups by
-  bean; grouping by roaster instead (average across everything from a
-  given roaster) answers a different, also-useful question - "which
-  roasters do I trust," not just "which specific bag."
 - **Proactive repeat-purchase surfacing.** 0.8.0's fuzzy matching already
   merges a re-typed identity into the right profile after the fact - this
   would surface it *before* saving ("You've had this before, rated it
   8.5 on 2026-06-01") right in the New Entry form, using the same fuzzy
   match while typing rather than only on submit.
-- **Tasting-note trends over time.** The favourite-notes ranking (0.4.0)
-  is a snapshot; a month-by-month view of which notes show up and how
-  they score would show a palate shifting over time, not just where it
-  currently stands.
-- **Origin map view.** A simple world map shading the countries logged so
-  far (by count or average score) - Insights' rankings are all lists;
-  this would be the one visual/spatial view.
-- **"Try something new" nudge.** If recent entries cluster heavily on 1-2
-  roasters, a gentle suggestion to branch out - low-effort, ties into
-  MAJOR 2's already-listed web-lookup enrichment idea if that ever lands.
 
 ---
 

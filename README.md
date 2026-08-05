@@ -82,6 +82,8 @@ criteria.
 - [ ] 1.5.0 - Multi-user/auth
 - [ ] 1.6.0 - Visual design pass
 - [ ] 1.7.0 - Data export/import
+- [ ] 1.8.0 - Insights: roaster view, note trends, map, nudge
+- [ ] 1.9.0 - Roaster website enrichment
 - [ ] 2.0.0 - Blank slate
 - [ ] 3.0.0 - iOS offline-first companion app (concept)
 - [ ] 4.0.0 - On-device AI/OCR (concept)
