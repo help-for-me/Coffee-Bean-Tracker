@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -11,6 +12,8 @@ from ..models import EntryCreate, EntryOut, EntrySummary, EntryUpdate, RatingCre
 from ..photos import save_photo
 from ..rate_limit import enforce_cooldown
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/entries", tags=["entries"])
 
 # Upload limits - a phone photo is a few MB and nobody photographs a single
@@ -23,6 +26,10 @@ MAX_PHOTO_BYTES = 15 * 1024 * 1024
 # Re-extraction spends the Anthropic API key's quota, so it's cooled down
 # per entry rather than left free to hammer.
 REEXTRACT_COOLDOWN_SECONDS = 30
+
+
+def _bean_label(entry: dict) -> str:
+    return f"{entry['bean_profile']['roaster']} — {entry['bean_profile']['bean_name']}"
 
 
 @router.post("", response_model=EntryOut, status_code=201)
@@ -74,7 +81,17 @@ async def create_entry(
             crud.add_entry_photo(conn, entry_id, photo_paths[-1], i)
         if photo_paths:
             background_tasks.add_task(run_extraction, entry_id, photo_paths)
-        return crud.get_entry(conn, entry_id)
+        entry = crud.get_entry(conn, entry_id)
+        # Identity source matters for 1.0.1's real-world-use checklist (bag
+        # via photo vs. bag typed by hand vs. a cafe cup, which always
+        # requires typing) - logged here rather than left to be pieced
+        # together from field values later.
+        identity_source = "typed" if has_identity else "photo (identity pending extraction)"
+        logger.info(
+            "Entry created: id=%s type=%s identity=%s bean=%r score=%s has_photos=%s",
+            entry_id, entry_data.entry_type, identity_source, _bean_label(entry), entry_data.score, bool(photo_paths),
+        )
+        return entry
     finally:
         conn.close()
 
@@ -107,7 +124,12 @@ def create_rating(entry_id: int, data: RatingCreate):
         if crud.get_entry(conn, entry_id) is None:
             raise HTTPException(status_code=404, detail="Entry not found")
         crud.add_rating(conn, entry_id, data)
-        return crud.get_entry(conn, entry_id)
+        entry = crud.get_entry(conn, entry_id)
+        # This is also how "Rate a Previous Bean" adds a rating - a second
+        # log line for the same bean confirms 1.0.1's repeat-rating check
+        # without needing to track it by hand.
+        logger.info("Rating added: entry_id=%s score=%s bean=%r", entry_id, data.score, _bean_label(entry))
+        return entry
     finally:
         conn.close()
 

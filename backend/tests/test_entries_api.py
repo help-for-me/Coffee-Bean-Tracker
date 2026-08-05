@@ -1,5 +1,6 @@
 import json
 
+from backend import logging_config
 from backend.extraction import run_extraction
 from backend.extractor.base import BeanExtractor
 
@@ -387,3 +388,41 @@ def test_reextract_second_immediate_call_is_cooled_down(client):
 
     second = client.post(f"/api/entries/{entry_id}/reextract")
     assert second.status_code == 429
+
+
+# --- domain-event logging (supports 1.0.1's real-world-use checklist) ---
+
+
+def test_create_entry_logs_typed_identity(client):
+    post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    log_contents = logging_config.LOG_PATH.read_text()
+    assert "Entry created: id=1 type=bag identity=typed bean='Stumptown — Hair Bender' score=8.0" in log_contents
+
+
+def test_create_entry_logs_photo_derived_identity(client):
+    client.post(
+        "/api/entries",
+        data={"data": json.dumps({"entry_type": "bag", "score": 7})},
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
+    )
+    log_contents = logging_config.LOG_PATH.read_text()
+    assert "identity=photo (identity pending extraction)" in log_contents
+    assert "has_photos=True" in log_contents
+
+
+def test_create_entry_logs_cafe_cup(client):
+    post_entry(client, entry_type="cafe_cup", roaster="Blue Bottle", bean_name="Bella Donovan", score=7)
+    log_contents = logging_config.LOG_PATH.read_text()
+    assert "type=cafe_cup" in log_contents
+
+
+def test_create_rating_logs_score_and_bean_for_repeat_tracking(client):
+    # The initial score is logged by "Entry created"; a later rating on the
+    # same entry - the "Rate a Previous Bean" flow - logs "Rating added"
+    # separately, so a repeat shows up as two log lines for the same bean.
+    entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=6).json()["id"]
+    client.post(f"/api/entries/{entry_id}/ratings", json={"score": 8})
+
+    log_contents = logging_config.LOG_PATH.read_text()
+    assert f"Entry created: id={entry_id}" in log_contents and "score=6.0" in log_contents
+    assert f"Rating added: entry_id={entry_id} score=8.0 bean='X — Y'" in log_contents

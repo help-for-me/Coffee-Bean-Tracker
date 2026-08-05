@@ -1,3 +1,5 @@
+import logging
+import time
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -12,16 +14,23 @@ load_dotenv()
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import database
+from . import crud, database
 from .logging_config import setup_logging
 from .routers import bean_profiles, entries, insights, photos
 
+logger = logging.getLogger(__name__)
+
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+
+# A request slower than this gets a warning in the log - an objective signal
+# for "this felt slow" during 1.0.1's real-world use test, since that's
+# otherwise just a subjective impression that's easy to forget to write down.
+SLOW_REQUEST_SECONDS = 3.0
 
 
 def resolve_spa_path(full_path: str, base: Path) -> Optional[Path]:
@@ -46,6 +55,14 @@ async def lifespan(app: FastAPI):
     # once for the whole test session, which would be too early for that.
     setup_logging()
     database.init_db()
+    conn = database.get_connection()
+    try:
+        # Logged so a container restart's before/after counts can be
+        # compared straight from the log file (1.0.2's "confirm nothing
+        # was lost" check) instead of clicking through the app to verify.
+        logger.info("Startup complete. Current counts: %s", crud.get_counts(conn))
+    finally:
+        conn.close()
     yield
 
 
@@ -57,6 +74,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_slow_requests(request: Request, call_next):
+    start = time.monotonic()
+    response = await call_next(request)
+    elapsed = time.monotonic() - start
+    if elapsed > SLOW_REQUEST_SECONDS:
+        logger.warning("Slow request: %s %s took %.1fs", request.method, request.url.path, elapsed)
+    return response
+
+
+@app.exception_handler(Exception)
+async def log_unhandled_exception(request: Request, exc: Exception):
+    # Anything that reaches here is a genuine bug, not an expected error
+    # (HTTPException - 404s, 422s, etc. - has its own handler and never
+    # reaches this one) - log the full traceback so it ends up in the
+    # exportable log file, and never show the client raw exception detail.
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error. Check the server logs."})
+
 
 # All API routes live under /api - the frontend has its own pages at some
 # of these same-looking paths (e.g. its Insights page is also "/insights"),

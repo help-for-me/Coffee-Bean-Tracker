@@ -370,10 +370,14 @@ batch-logged in one sitting, the point is ordinary daily use):**
 - [ ] Note anything that felt slow, confusing, or wrong as it happens -
   a screenshot and a sentence is enough, doesn't need to be formal
 
-**Report back:** roughly how many entries, confirmation the four boxes
-above got exercised, and either "no issues" or whatever you noted along
-the way (screenshots welcome, same as every other manual test this
-project has done).
+**Report back:** export `data/logs/app.log` after the 1-2 weeks and send
+it over - every entry (type, typed vs. photo identity, score) and every
+rating is logged as it happens, so the first three boxes above can be
+confirmed directly from the file instead of tracked by hand. Any request
+slower than 3 seconds is flagged in there too. The fourth box (anything
+that felt confusing or wrong) is the one thing logs can't capture on
+their own - a quick note when it happens is still the way to report that
+one.
 
 **`1.0.2` - deployment resilience:**
 - [ ] Restart the container on Iron (Unraid's stop/start, not a fresh
@@ -385,10 +389,14 @@ project has done).
 - [ ] Confirm there's no port-forwarding rule for this app's port on your
   router (quick look in the router's admin panel)
 
-**Report back:** pass/fail on each of the three boxes above. A fail on
-the LAN-exposure checks is treated as urgent, not routine - it means the
-app is reachable from the internet, which the project's design
-explicitly assumes never happens.
+**Report back:** pass/fail on each of the three boxes above. The first
+box can be confirmed from the same log export - every startup logs the
+current entry/rating/photo counts, so a restart's before-and-after
+numbers are directly comparable in the file. The other two are physical/
+network checks with no log-based substitute. A fail on the LAN-exposure
+checks is treated as urgent, not routine - it means the app is reachable
+from the internet, which the project's design explicitly assumes never
+happens.
 
 Manual full-system test closes 1.0.x once both `1.0.1` and `1.0.2` report back clean.
 
