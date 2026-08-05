@@ -68,7 +68,7 @@ to it redundantly with the dedicated co-ferment fields. Fixed by:
   against instead of guessing from position on the label alone.
 - Explicit field-boundary guidance in the prompt: region is a sub-national
   growing area, never a person/farm name; process is the base method only,
-  never co-ferment wording; tasting notes are flavor descriptors only,
+  never co-ferment wording; tasting notes are flavour descriptors only,
   never variety/process words even when a label line visually groups them
   together.
 - Defensive post-processing (`normalize_extraction`): strips any
@@ -344,7 +344,7 @@ Pytest-covered (14 new cases: crud caching, a fake-generator unit test
 confirming only the window-scoped stats ever reach the prompt, and
 router-level success/no-API-key-failure cases) and verified in a real
 browser, including the missing-API-key error path (dev has no key,
-matching extraction's established behavior) and, via a mocked network
+matching extraction's established behaviour) and, via a mocked network
 response, the successful-generation rendering path.
 
 ---
@@ -366,7 +366,7 @@ batch-logged in one sitting, the point is ordinary daily use):**
 - [ ] At least one cafe cup entry
 - [ ] At least one repeat: re-rate a bean you've already logged before
   (exercises the "rate a previous bean" flow and, incidentally, whatever
-  bean-profile linking behavior it hits)
+  bean-profile linking behaviour it hits)
 - [ ] Note anything that felt slow, confusing, or wrong as it happens -
   a screenshot and a sentence is enough, doesn't need to be formal
 
@@ -520,6 +520,12 @@ specific sub-version:
   0.4.0 favourite-process breakdown (deliberately excluded from 0.4.0's
   process ranking, per request, so it doesn't muddy plain process
   preference).
+- Language/locale selector in the Settings UI (1.4.0): per-user choice
+  between the major English variants - at least US English, UK English,
+  and Canadian English (today's fixed default - see CLAUDE.md). Affects
+  UI text and the wording instruction sent to the AI for generated
+  content (e.g. the Insights summary), not extracted bag text, which is
+  always copied verbatim from the label regardless of this setting.
 
 ---
 

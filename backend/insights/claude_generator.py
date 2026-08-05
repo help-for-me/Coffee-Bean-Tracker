@@ -29,8 +29,9 @@ actual process/origin/tasting-note names from the data. Say it once, plainly,
 and stop - no restating the same point in different words, no hedging
 ("might", "could", "explore"), no closing filler sentence that just
 softens or repeats what you already said. If there's too little data for a
-clear pattern, say so briefly rather than stretching a weak one. No
-preamble, no markdown, just the recommendation text itself."""
+clear pattern, say so briefly rather than stretching a weak one. Write in
+Canadian English (e.g. "flavour", "favourite", "colour"). No preamble, no
+markdown, just the recommendation text itself."""
 
 
 class ClaudeInsightGenerator(InsightGenerator):

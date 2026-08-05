@@ -80,18 +80,18 @@ before filing it:
   wording or ingredient names here (no "Co-Fermented", "Co-ferment", or
   fruit/yeast names in this field) — that belongs exclusively in
   co_ferment_status/co_ferment_ingredient below.
-- **printed_tasting_notes**: ONLY flavor/aroma descriptors (fruits,
+- **printed_tasting_notes**: ONLY flavour/aroma descriptors (fruits,
   florals, sweeteners, spices, etc). If a label line reads like
-  "Castillo - Honey" immediately followed by flavor words (e.g. "Hibiscus
+  "Castillo - Honey" immediately followed by flavour words (e.g. "Hibiscus
   - Peach - Tropical Fruits"), split it: "Castillo" is the variety,
-  "Honey" is the process, and only the flavor words belong in
+  "Honey" is the process, and only the flavour words belong in
   printed_tasting_notes. Common single words are easy to misfile: "Honey"
   and "Natural" are almost always a process, not a tasting note. Also
   exclude product-category/packaging text, which is easy to mistake for a
   notes list because it's often printed right next to one: bilingual
   labels are common (e.g. "Whole Bean Coffee / Grains de café", "Ground
   Coffee / Café moulu" on Canadian bags) - these describe the product
-  format, not the flavor, and belong in neither this field nor any other.
+  format, not the flavour, and belong in neither this field nor any other.
 
 Reference vocabulary (not exhaustive — real labels use plenty of valid
 terms outside these lists, so don't force a fit if the label clearly says

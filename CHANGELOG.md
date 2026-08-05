@@ -7,6 +7,12 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- The project now writes everything - UI text, docs, and the AI-generated
+  Insights summary - in Canadian English, per a new standing policy (see
+  CLAUDE.md). A test guards docs and backend prose against drifting back
+  to American-only spellings.
+
 ### Added
 - Logging now captures what it needs to for the 1.0.1/1.0.2 manual tests
   to be completed by reviewing the exported log file, rather than tracked
