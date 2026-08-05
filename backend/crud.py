@@ -1,5 +1,6 @@
 import difflib
 import sqlite3
+from datetime import datetime, timezone
 from typing import Optional
 
 from .models import EntryCreate, RatingCreate
@@ -480,3 +481,88 @@ def get_counts(conn: sqlite3.Connection) -> dict:
         "ratings": conn.execute("SELECT COUNT(*) AS n FROM ratings").fetchone()["n"],
         "photos": conn.execute("SELECT COUNT(*) AS n FROM entry_photos").fetchone()["n"],
     }
+
+
+# --- 1.7.0: JSON data export/import ---
+#
+# A full round-trip backup for restoring or moving to a new install - not
+# the CSV/XLSX reports (human-readable, one row per rating, lossy for the
+# one-to-many entry->ratings relationship). This dumps every row of every
+# user-data table exactly as stored, and import restores that exact state.
+# Photo files themselves aren't included (they live in the separately
+# mounted photos/ volume, already copied whichever way the rest of the
+# install moves) - only the entry_photos rows that point at them.
+
+_EXPORT_FORMAT_VERSION = 1
+
+# Table order matters twice over: it's the FK-safe insert order on import
+# (a bean_profiles row must exist before an entries row can reference it),
+# and reversed, the FK-safe delete order (an entries row must go before the
+# bean_profiles row it references). Each set is an explicit column
+# allowlist - column names from the uploaded JSON get interpolated into a
+# SQL identifier list on import, so anything not on this list is rejected
+# rather than trusted.
+_EXPORT_TABLES: dict[str, set[str]] = {
+    "bean_profiles": {"id", "roaster", "bean_name", "is_provisional", "created_at"},
+    "entries": {
+        "id", "bean_profile_id", "user_id", "entry_type", "cafe_name", "entry_date", "date_entered",
+        "price_paid", "currency", "extraction_status", "extraction_source", "origin_country", "region",
+        "farm_producer", "altitude_m", "variety", "process", "co_ferment_status", "co_ferment_ingredient",
+        "certifications", "roast_level", "printed_tasting_notes", "roast_date", "bag_weight_g",
+        "batch_number", "roast_location", "updated_at",
+    },
+    "entry_farms": {"id", "entry_id", "farm_name", "location"},
+    "entry_photos": {"id", "entry_id", "photo_path", "upload_order", "date_entered"},
+    "ratings": {
+        "id", "entry_id", "user_id", "score", "narrative_notes", "acidity_score", "body_score",
+        "sweetness_score", "brew_style", "repurchase", "date_entered", "updated_at",
+    },
+    "insight_narratives": {"id", "window_type", "summary_text", "generated_at"},
+    "settings": {"key", "value"},
+}
+
+
+class ImportValidationError(ValueError):
+    pass
+
+
+def get_full_export(conn: sqlite3.Connection) -> dict:
+    export: dict = {
+        "format_version": _EXPORT_FORMAT_VERSION,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+    }
+    for table in _EXPORT_TABLES:
+        export[table] = [dict(row) for row in conn.execute(f"SELECT * FROM {table}").fetchall()]
+    return export
+
+
+def import_full_export(conn: sqlite3.Connection, data: dict) -> dict:
+    if data.get("format_version") != _EXPORT_FORMAT_VERSION:
+        raise ImportValidationError(f"Unsupported or missing format_version: {data.get('format_version')!r}")
+
+    for table, allowed_columns in _EXPORT_TABLES.items():
+        table_rows = data.get(table, [])
+        if not isinstance(table_rows, list):
+            raise ImportValidationError(f"{table!r} must be a list of rows")
+        for row in table_rows:
+            if not isinstance(row, dict):
+                raise ImportValidationError(f"Malformed row in {table!r}: expected an object")
+            unknown = set(row) - allowed_columns
+            if unknown:
+                raise ImportValidationError(f"Unknown column(s) in {table!r}: {sorted(unknown)}")
+
+    with conn:
+        # Wipes everything first - this is a full restore, not a merge.
+        # Reverse order so a table is always emptied before the table it
+        # references (e.g. entries before bean_profiles).
+        for table in reversed(_EXPORT_TABLES):
+            conn.execute(f"DELETE FROM {table}")
+        for table in _EXPORT_TABLES:
+            for row in data.get(table, []):
+                columns = list(row.keys())
+                placeholders = ", ".join("?" for _ in columns)
+                conn.execute(
+                    f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
+                    [row[column] for column in columns],
+                )
+    return get_counts(conn)

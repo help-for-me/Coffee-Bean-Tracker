@@ -494,13 +494,38 @@ day-to-day phone use against the real deployment.
 personal (colours, typography, style direction) - there's no objectively
 correct implementation to build ahead of the user's own taste.
 
-### 1.7.0 - Data export/import
+### 1.7.0 - Data export/import - built, awaiting review (2026-08-05)
 JSON round-trip backup, for restoring or moving to a new install - not
 CSV/XLSX. An entry can have several ratings, and that one-to-many
 relationship doesn't flatten into rows and columns without ambiguity -
 JSON keeps the structure exact so a restore is reliable. CSV (MVP) and
 XLSX (1.1.0) stay as human-readable reports for opening in a spreadsheet,
 not as a re-import source.
+
+Built on branch `claude/1.7.0-data-export-import`, opened as a draft PR
+left unmerged per the milestone workflow. `GET /data/export` dumps every
+row of every user-data table (bean profiles, entries, farms, ratings,
+photo records, cached AI narratives, settings) exactly as stored, tagged
+with a `format_version` for future schema changes; `POST /data/import`
+requires an explicit `confirm: true` alongside the data (separate from
+the file content itself, so re-uploading a previously-downloaded export
+unmodified can't trigger a restore by accident) and then wipes and
+replaces every one of those tables in a single transaction, so a restore
+either fully succeeds or leaves existing data untouched - never a partial
+mix of old and new. Column names from the uploaded JSON are checked
+against a fixed per-table allowlist before being used to build the
+`INSERT` statement, closing off SQL injection via a crafted backup file.
+Original row IDs are preserved through the round trip. Photo files
+themselves aren't included (only the `entry_photos` rows pointing at
+them) - carrying the `photos/` folder along separately when moving to a
+new install is called out in the UI. Export page (still the pre-1.1.0
+placeholder here, since that milestone lives on its own unmerged branch)
+gained a download button and a file-picker restore flow with a
+confirmation dialog before anything destructive happens. Full backend
+test suite passing, including the SQL-injection and partial-write-safety
+cases; the download/restore round trip was also verified against a live
+server and a real browser, including via a file actually saved to and
+re-uploaded from disk.
 
 ---
 

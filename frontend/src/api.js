@@ -88,3 +88,26 @@ export function updateRating(entryId, ratingId, data) {
 export function deleteRating(entryId, ratingId) {
   return request(`/entries/${entryId}/ratings/${ratingId}`, { method: 'DELETE' })
 }
+
+export async function downloadDataExport() {
+  const response = await fetch(`${BASE_URL}${API_PREFIX}/data/export`)
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.detail ?? `Request failed: ${response.status}`)
+  }
+  const blob = await response.blob()
+  const match = (response.headers.get('Content-Disposition') ?? '').match(/filename="?([^"]+)"?/)
+  const filename = match ? match[1] : 'coffee-bean-tracker-backup.json'
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+export function importDataExport(data) {
+  return request('/data/import', { method: 'POST', body: JSON.stringify({ confirm: true, data }) })
+}

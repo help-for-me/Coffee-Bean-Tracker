@@ -19,6 +19,13 @@ This project uses [Semantic Versioning](https://semver.org/).
   background refresh never spends an API call on its own.
 
 ### Added
+- Full data backup and restore (`GET`/`POST /data/export`/`import`): the
+  Export page can now download a JSON file with everything in the app -
+  every bean profile, entry, rating, and photo record - for restoring or
+  moving to a new install, and restore from a previously-downloaded file.
+  Restoring replaces all existing data and requires an explicit
+  confirmation, both via the API and a confirmation dialog in the UI,
+  since it can't be undone.
 - Logging now captures what it needs to for the 1.0.1/1.0.2 manual tests
   to be completed by reviewing the exported log file, rather than tracked
   by hand: every entry (type, typed-vs-photo identity, score) and every
