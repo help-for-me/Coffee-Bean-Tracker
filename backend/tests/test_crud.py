@@ -322,3 +322,55 @@ def test_save_narrative_twice_returns_most_recent_on_get(conn):
     fetched = crud.get_latest_narrative(conn, "all_time")
     assert fetched["id"] == second["id"]
     assert fetched["summary_text"] == "Second summary"
+
+
+# --- 1.1.0: data backup sinks ---
+
+
+def test_get_export_rows_empty_database(conn):
+    assert crud.get_export_rows(conn) == []
+
+
+def test_get_export_rows_one_row_per_rating(conn):
+    entry_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="X", bean_name="Y", score=7)
+    )
+    crud.add_rating(conn, entry_id, RatingCreate(score=8))
+
+    rows = crud.get_export_rows(conn)
+
+    assert len(rows) == 2
+    assert {r["score"] for r in rows} == {7, 8}
+    assert all(r["roaster"] == "X" and r["bean_name"] == "Y" for r in rows)
+
+
+def test_get_export_rows_includes_bag_detail_fields(conn):
+    crud.create_entry(
+        conn,
+        EntryCreate(entry_type="bag", roaster="X", bean_name="Y", score=7, origin_country="Colombia", process="Washed"),
+    )
+    row = crud.get_export_rows(conn)[0]
+    assert row["origin_country"] == "Colombia"
+    assert row["process"] == "Washed"
+
+
+def test_get_last_export_returns_none_when_never_logged(conn):
+    assert crud.get_last_export(conn, "github") is None
+
+
+def test_log_export_then_get_last_export(conn):
+    crud.log_export(conn, "github", "success")
+    last = crud.get_last_export(conn, "github")
+    assert last["status"] == "success"
+    assert last["sink"] == "github"
+
+
+def test_get_last_export_returns_most_recent(conn):
+    crud.log_export(conn, "github", "failed")
+    crud.log_export(conn, "github", "success")
+    assert crud.get_last_export(conn, "github")["status"] == "success"
+
+
+def test_get_last_export_scoped_by_sink(conn):
+    crud.log_export(conn, "local_xlsx", "success")
+    assert crud.get_last_export(conn, "github") is None

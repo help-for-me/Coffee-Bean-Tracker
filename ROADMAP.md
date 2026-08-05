@@ -400,7 +400,7 @@ happens.
 
 Manual full-system test closes 1.0.x once both `1.0.1` and `1.0.2` report back clean.
 
-### 1.1.0 - Data backup sinks
+### 1.1.0 - Data backup sinks - built, awaiting review (2026-08-05)
 Gives the Export tab (scaffolded since 0.1.0, empty ever since - flagged
 as an unscheduled gap and given a real home here) an actual implementation:
 
@@ -410,6 +410,13 @@ as an unscheduled gap and given a real home here) an actual implementation:
 
 All three use the `export_log` table already present in the schema since
 0.1.0. Human-readable reports, not a re-import source (see 1.7.0).
+
+Built on branch `claude/1.1.0-data-backup-sinks`, opened as a draft PR
+that is being left unmerged on purpose - per the new milestone workflow,
+1.x.x branches get built ahead of the still-pending 1.0.1/1.0.2 manual
+tests but wait for a look-over before joining `main`. Full backend test
+suite passing; CSV/XLSX download and the local-save/GitHub-backup toggles
+were also exercised against a live server, not just unit tests.
 
 ### 1.2.0 - Richer browsing
 History filter/sort controls, Insights attribute-switcher dropdown (beyond
