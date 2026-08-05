@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import History from './pages/History'
 import Insights from './pages/Insights'
 import Export from './pages/Export'
+import Settings from './pages/Settings'
 import NewEntry from './pages/NewEntry'
 import RatePrevious from './pages/RatePrevious'
 import EntryDetail from './pages/EntryDetail'
@@ -18,6 +19,7 @@ function App() {
             <Route path="/history" element={<History />} />
             <Route path="/insights" element={<Insights />} />
             <Route path="/export" element={<Export />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/entries/new" element={<NewEntry />} />
             <Route path="/entries/rate" element={<RatePrevious />} />
             <Route path="/entries/:id" element={<EntryDetail />} />

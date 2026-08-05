@@ -278,6 +278,18 @@ def test_get_insights_includes_origin_and_tasting_note_breakdowns(conn):
     assert result["by_tasting_note"]["all_time"] == [{"note": "Chocolate", "avg_score": 8, "count": 1}]
 
 
+def test_get_insights_respects_recent_window_setting_override(conn):
+    # 1.4.0: a settings-table override (set via the Settings UI) beats the
+    # RECENT_WINDOW_COUNT env var default of 10.
+    crud.set_setting(conn, "recent_window_count", "1")
+    crud.set_setting(conn, "recent_window_months", "1")
+    for i in range(3):
+        _rate_at(conn, f"Roaster {i}", "Bean", 7, date(2026, 7, 1 + i))
+
+    result = get_insights(conn, today=date(2026, 8, 4))
+    assert result["recent_window"]["applicable"] is True
+
+
 def test_get_insights_empty_database(conn):
     result = get_insights(conn, today=date(2026, 8, 4))
     assert result["monthly_trend"] == []

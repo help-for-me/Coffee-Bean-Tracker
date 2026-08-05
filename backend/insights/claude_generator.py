@@ -35,15 +35,21 @@ markdown, just the recommendation text itself."""
 
 
 class ClaudeInsightGenerator(InsightGenerator):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None, extra_instructions: str | None = None):
         self.client = Anthropic(api_key=api_key or os.environ["ANTHROPIC_API_KEY"])
         self.model = model or os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+        # User-supplied addition to the prompt (1.4.0 settings UI's
+        # plain-language prompt editing) - appended as its own section
+        # rather than merged into the template.
+        self.extra_instructions = extra_instructions
 
     def generate(self, insights: dict, window_type: str) -> str:
         window_label = "the recent window" if window_type == "recent" else "all time"
         prompt = NARRATIVE_PROMPT_TEMPLATE.format(
             window_label=window_label, stats_json=json.dumps(insights, indent=2, default=str)
         )
+        if self.extra_instructions:
+            prompt += f"\n\nAdditional instructions from the user - follow these too:\n{self.extra_instructions}"
         response = self.client.messages.create(
             model=self.model,
             max_tokens=150,

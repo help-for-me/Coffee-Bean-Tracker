@@ -480,3 +480,20 @@ def get_counts(conn: sqlite3.Connection) -> dict:
         "ratings": conn.execute("SELECT COUNT(*) AS n FROM ratings").fetchone()["n"],
         "photos": conn.execute("SELECT COUNT(*) AS n FROM entry_photos").fetchone()["n"],
     }
+
+
+# --- 1.4.0: settings UI ---
+
+
+def get_setting(conn: sqlite3.Connection, key: str) -> Optional[str]:
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    with conn:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )

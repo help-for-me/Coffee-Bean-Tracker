@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import crud, database
 from .logging_config import setup_logging
-from .routers import bean_profiles, entries, insights, photos
+from .routers import bean_profiles, entries, insights, photos, settings
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +106,7 @@ app.include_router(entries.router, prefix="/api")
 app.include_router(bean_profiles.router, prefix="/api")
 app.include_router(insights.router, prefix="/api")
 app.include_router(photos.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")
 
 
 @app.get("/health")

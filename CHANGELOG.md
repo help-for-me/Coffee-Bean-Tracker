@@ -19,6 +19,14 @@ This project uses [Semantic Versioning](https://semver.org/).
   background refresh never spends an API call on its own.
 
 ### Added
+- New Settings page (`GET`/`PUT /settings`): the Insights "Recent" window
+  (previously `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` env vars only)
+  can now be adjusted from the app itself, and two new plain-English text
+  boxes let you add your own instructions to the AI extraction prompt and
+  the Insights summary prompt (e.g. "always exclude bilingual packaging
+  text", "keep it to one sentence") without waiting on a code change -
+  added as an extra section alongside the built-in prompt rules, not a
+  replacement for them.
 - Logging now captures what it needs to for the 1.0.1/1.0.2 manual tests
   to be completed by reviewing the exported log file, rather than tracked
   by hand: every entry (type, typed-vs-photo identity, score) and every

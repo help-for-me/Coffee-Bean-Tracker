@@ -88,3 +88,11 @@ export function updateRating(entryId, ratingId, data) {
 export function deleteRating(entryId, ratingId) {
   return request(`/entries/${entryId}/ratings/${ratingId}`, { method: 'DELETE' })
 }
+
+export function getSettings() {
+  return request('/settings')
+}
+
+export function updateSettings(data) {
+  return request('/settings', { method: 'PUT', body: JSON.stringify(data) })
+}
