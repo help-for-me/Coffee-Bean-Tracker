@@ -1,15 +1,28 @@
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile
 from pydantic import ValidationError
 
 from .. import crud, database
 from ..extraction import run_extraction
+from ..image_utils import sniff_image_type
 from ..models import EntryCreate, EntryOut, EntrySummary, EntryUpdate, RatingCreate, RatingUpdate
 from ..photos import save_photo
+from ..rate_limit import enforce_cooldown
 
 router = APIRouter(prefix="/entries", tags=["entries"])
+
+# Upload limits - a phone photo is a few MB and nobody photographs a single
+# bag from more than a handful of angles, so these are generous for real
+# use while still capping how much an unauthenticated request can write to
+# disk in one call.
+MAX_PHOTOS_PER_ENTRY = 10
+MAX_PHOTO_BYTES = 15 * 1024 * 1024
+
+# Re-extraction spends the Anthropic API key's quota, so it's cooled down
+# per entry rather than left free to hammer.
+REEXTRACT_COOLDOWN_SECONDS = 30
 
 
 @router.post("", response_model=EntryOut, status_code=201)
@@ -22,6 +35,24 @@ async def create_entry(
         entry_data = EntryCreate.model_validate_json(data)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    if len(photos) > MAX_PHOTOS_PER_ENTRY:
+        raise HTTPException(status_code=422, detail=f"At most {MAX_PHOTOS_PER_ENTRY} photos per entry.")
+
+    # Read and validate every photo up front, before creating anything in
+    # the database - a rejected upload should never leave a half-created
+    # entry behind. Checks the file's actual bytes rather than trusting
+    # whatever content-type the client claims.
+    photo_contents = []
+    for photo in photos:
+        contents = await photo.read()
+        if len(contents) > MAX_PHOTO_BYTES:
+            raise HTTPException(
+                status_code=422, detail=f"Photos must be under {MAX_PHOTO_BYTES // (1024 * 1024)}MB."
+            )
+        if sniff_image_type(contents) is None:
+            raise HTTPException(status_code=422, detail="One of the uploaded files isn't a recognized image type.")
+        photo_contents.append(contents)
 
     has_identity = bool(entry_data.roaster and entry_data.bean_name)
     # A bag with at least one photo can skip typed identity - extraction
@@ -38,8 +69,7 @@ async def create_entry(
     try:
         entry_id = crud.create_entry(conn, entry_data, has_photos=bool(photos))
         photo_paths = []
-        for i, photo in enumerate(photos):
-            contents = await photo.read()
+        for i, contents in enumerate(photo_contents):
             photo_paths.append(save_photo(entry_id, i, contents))
             crud.add_entry_photo(conn, entry_id, photo_paths[-1], i)
         if photo_paths:
@@ -108,7 +138,8 @@ def delete_entry(entry_id: int):
 
 
 @router.post("/{entry_id}/reextract", response_model=EntryOut)
-def reextract_entry(entry_id: int, background_tasks: BackgroundTasks):
+def reextract_entry(entry_id: int, background_tasks: BackgroundTasks, request: Request):
+    enforce_cooldown(request, f"reextract:{entry_id}", REEXTRACT_COOLDOWN_SECONDS)
     conn = database.get_connection()
     try:
         if crud.get_entry(conn, entry_id) is None:
