@@ -7,7 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # CLAUDE.md's "Canadian English" policy) - not an exhaustive dictionary,
 # just a regression guard. Deliberately narrow: Canadian English keeps
 # American "-ize"/"-yze" endings and "program", so those are never here.
-_BLOCKED = ["flavor", "favorite", "behavior", "neighbor", "honor", "defense"]
+_BLOCKED = ["flavor", "favorite", "behavior", "neighbor", "honor", "defense", "color"]
 _PATTERN = re.compile(r"\b(" + "|".join(_BLOCKED) + r")\b", re.IGNORECASE)
 
 
