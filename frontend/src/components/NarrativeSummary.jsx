@@ -8,12 +8,25 @@ export default function NarrativeSummary({ window: windowType }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    getNarrative(windowType)
-      .then(setNarrative)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
+    const load = (silent = false) => {
+      if (!silent) setLoading(true)
+      setError(null)
+      getNarrative(windowType)
+        .then(setNarrative)
+        .catch((e) => setError(e.message))
+        .finally(() => setLoading(false))
+    }
+
+    load()
+    // A cached read, not a new AI generation - safe to quietly refresh
+    // when the tab regains focus, so a summary generated elsewhere (or
+    // just the "Generated ..." timestamp) doesn't go stale while this
+    // page sits open in the background.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load(true)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [windowType])
 
   const handleGenerate = async () => {
