@@ -84,9 +84,11 @@ criteria.
 - [ ] 1.7.0 - Data export/import
 - [ ] 1.8.0 - Insights: roaster view, note trends, map, nudge
 - [ ] 1.9.0 - Roaster website enrichment
+- [ ] 1.10.0 - Photo thumbnails
 - [ ] 2.0.0 - Blank slate
 - [ ] 3.0.0 - iOS offline-first companion app (concept)
 - [ ] 4.0.0 - On-device AI/OCR (concept)
+- [ ] 5.0.0 - Serverless agent-native app (concept, unconfirmed)
 
 ## License
 

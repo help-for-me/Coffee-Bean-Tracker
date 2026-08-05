@@ -7,7 +7,8 @@ Detailed planning for each milestone. For an at-a-glance checklist, see the
 
 Semantic Versioning (`MAJOR.MINOR.PATCH`):
 - **MAJOR** - a fundamentally new phase (0 = building the MVP, 1 = stable,
-  2 = blank slate, 3 = iOS offline-first companion app, 4 = on-device AI/OCR)
+  2 = blank slate, 3 = iOS offline-first companion app, 4 = on-device
+  AI/OCR, 5 = serverless agent-native app, unconfirmed)
 - **MINOR** - new functionality added
 - **PATCH** - bug fixes/stabilization, no new features
 
@@ -555,6 +556,15 @@ own site specifically, not a general web search.
   shape, given the same pattern the narrative/extraction prompts already
   use) - fine to settle at build time, doesn't block scoping this now.
 
+### 1.10.0 - Photo thumbnails
+Agreed 2026-08-05. History and Entry Detail's photo galleries currently
+serve full-resolution phone photos (often several MB each) for
+thumbnail-sized previews - wasted bandwidth and a slower page over LAN
+Wi-Fi, worse the more photos an entry or a bean profile has. Generate a
+small resized copy (~200px) alongside the original at upload time and
+serve that for every list/grid view; only load the full-size original
+when a photo is actually opened.
+
 ---
 
 ## AI-suggested features
@@ -647,3 +657,20 @@ directly on the device (e.g. Apple's Vision/on-device model frameworks)
 instead of round-tripping to Claude's API - most relevant for the
 "phone can't currently reach the server or the internet" case that 3.0.0
 is already solving for.
+
+## MAJOR 5 - Serverless, agent-native app (concept, unconfirmed)
+
+Floated 2026-08-05, explicitly tentative - "not sure I want to commit to
+this but it's something to consider," not even at MAJOR 3/4's level of
+confidence. A more radical version of those two: instead of a native iOS
+client that syncs with a self-hosted server (MAJOR 3) or just moves
+extraction on-device while keeping that client/server split (MAJOR 4),
+this would drop the server entirely - the iPhone app becomes the whole
+system, talking directly to AI agents instead of a self-hosted FastAPI
+backend. Would mean rethinking storage (on-device instead of the shared
+SQLite file on Iron), multi-device access (today's self-hosted setup is
+inherently one shared source of truth), and the self-hosted/Unraid
+deployment model this project has been built around since 0.3.0. No
+design work here - revisit only if MAJOR 3/4 in practice reveal the
+server model itself as the real friction, not just a missing
+offline-capable client.
