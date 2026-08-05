@@ -444,6 +444,11 @@ specifically for this - a new `ollama_extractor.py` plus one factory
 branch, no redesign needed. Test head-to-head against the 1.0 baseline
 before relying on it.
 
+**Not drafted ahead of schedule** (2026-08-05): needs the user's own
+Ollama endpoint/infrastructure decision first (self-host where, which
+model) and can't be meaningfully validated without a live Ollama server
+to run the head-to-head test this section itself calls for.
+
 ### 1.4.0 - Settings UI
 Low priority. Takes over `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` from
 env vars, using the `settings` table already present in the schema.
@@ -472,12 +477,22 @@ changing the container's user without first confirming what owns that
 folder on the host risks breaking write access to the database on the
 next deploy.
 
+**Not drafted ahead of schedule** (2026-08-05): security-sensitive and
+architecturally significant - needs a decision on the auth mechanism
+itself (a single shared password vs. real per-user accounts, session vs.
+token) before building, the same way 0.5.0's provisional-profile design
+was confirmed with the user before being built, not guessed at.
+
 ### 1.6.0 - Visual design pass
-Lowest priority, deliberately last functional-adjacent item. Colors,
+Lowest priority, deliberately last functional-adjacent item. Colours,
 typography, layout polish - no workflow changes. Everything up to this
 point ships with plain, functional default styling only. Includes the
 front-screen/mobile polish originally scoped as 0.3.1, based on actual
 day-to-day phone use against the real deployment.
+
+**Not drafted ahead of schedule** (2026-08-05): purely aesthetic and
+personal (colours, typography, style direction) - there's no objectively
+correct implementation to build ahead of the user's own taste.
 
 ### 1.7.0 - Data export/import
 JSON round-trip backup, for restoring or moving to a new install - not
