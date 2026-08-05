@@ -53,3 +53,19 @@ def test_post_narrative_without_api_key_returns_502(client):
     response = client.post("/insights/narrative")
     assert response.status_code == 502
     assert client.get("/insights/narrative").json() is None
+
+
+def test_post_narrative_error_does_not_leak_exception_text(client):
+    # Security hardening: the response must never echo back raw exception
+    # text (which could reveal internal details) - just a generic message.
+    response = client.post("/insights/narrative")
+    assert "ANTHROPIC_API_KEY" not in response.text
+    assert response.json()["detail"] == "Insight generation failed. Check the server logs."
+
+
+def test_post_narrative_second_immediate_call_is_cooled_down(client):
+    first = client.post("/insights/narrative")
+    assert first.status_code == 502  # no API key, but the attempt still counts
+
+    second = client.post("/insights/narrative")
+    assert second.status_code == 429

@@ -7,6 +7,19 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+- Fixed the static-file fallback route so it can no longer resolve or
+  serve a path outside the intended frontend build directory.
+- Photo uploads are now checked against a real image signature (not just
+  the filename or claimed content-type) and capped in size and count per
+  entry.
+- API error responses no longer include internal exception text - the
+  full detail is logged server-side, and the client gets a generic
+  message instead.
+- Added a short per-client cooldown to the AI-backed endpoints (re-run
+  extraction, generate insights summary) so a stuck client or repeated
+  retries can't spend the Anthropic API key's quota unchecked.
+
 ## [0.9.0] - 2026-08-04
 
 ### Added

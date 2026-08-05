@@ -8,6 +8,7 @@ from anthropic import Anthropic
 
 from . import coffee_vocab
 from .base import BeanExtractor
+from ..image_utils import sniff_image_type
 
 EXTRACTION_PROMPT = """You are extracting structured data from photo(s) related to a coffee — a
 bag label, a cafe menu board, or an info card. Return ONLY valid JSON, no
@@ -122,15 +123,12 @@ EXTRACTION_PROMPT = (
 
 
 def _sniff_media_type(image_bytes: bytes) -> str:
-    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
-        return "image/png"
-    if image_bytes[:3] == b"\xff\xd8\xff":
-        return "image/jpeg"
-    if image_bytes[:6] in (b"GIF87a", b"GIF89a"):
-        return "image/gif"
-    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
-        return "image/webp"
-    return "image/jpeg"
+    # Unlike image_utils.sniff_image_type (used to reject non-images on
+    # upload), this always needs *some* answer to hand the Anthropic API -
+    # by the time extraction runs, the file has already passed upload
+    # validation, so falling back to jpeg here is a reasonable default
+    # rather than a security gap.
+    return sniff_image_type(image_bytes) or "image/jpeg"
 
 
 def _response_text(content_blocks) -> str:

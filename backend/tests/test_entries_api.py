@@ -89,7 +89,7 @@ def test_create_entry_with_photo_creates_entry_photo_row(client, conn):
                 {"entry_type": "bag", "roaster": "Stumptown", "bean_name": "Hair Bender", "score": 8}
             )
         },
-        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     assert response.status_code == 201
     entry_id = response.json()["id"]
@@ -110,7 +110,7 @@ def test_create_entry_with_photo_resolves_to_failed_without_api_key(client):
                 {"entry_type": "bag", "roaster": "Stumptown", "bean_name": "Hair Bender", "score": 8}
             )
         },
-        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     assert response.status_code == 201
     entry_id = response.json()["id"]
@@ -136,7 +136,7 @@ def test_create_bag_entry_with_photo_and_no_identity_succeeds(client):
     response = client.post(
         "/entries",
         data={"data": json.dumps({"entry_type": "bag", "score": 7})},
-        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     assert response.status_code == 201
     body = response.json()
@@ -155,7 +155,7 @@ def test_create_cafe_cup_with_photo_and_no_identity_rejected(client):
     response = client.post(
         "/entries",
         data={"data": json.dumps({"entry_type": "cafe_cup", "score": 7})},
-        files=[("photos", ("menu.jpg", b"fake-image-bytes", "image/jpeg"))],
+        files=[("photos", ("menu.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     assert response.status_code == 422
 
@@ -169,7 +169,7 @@ def test_create_bag_entry_with_photo_no_identity_extraction_resolves_it(client):
     response = client.post(
         "/entries",
         data={"data": json.dumps({"entry_type": "bag", "score": 7})},
-        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     entry_id = response.json()["id"]
     assert response.json()["bean_profile"]["is_provisional"] is True
@@ -220,7 +220,7 @@ def test_delete_entry_removes_photo_file_from_disk(client, tmp_path):
     response = client.post(
         "/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
-        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     entry_id = response.json()["id"]
     photo_id = response.json()["photos"][0]["id"]
@@ -239,7 +239,7 @@ def test_reextract_entry_resets_to_pending(client):
     response = client.post(
         "/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
-        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     entry_id = response.json()["id"]
     assert client.get(f"/entries/{entry_id}").json()["extraction_status"] == "failed"
@@ -297,12 +297,12 @@ def test_get_photo_serves_file(client):
     response = client.post(
         "/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
-        files=[("photos", ("bag.jpg", b"fake-image-bytes", "image/jpeg"))],
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     photo_id = response.json()["photos"][0]["id"]
     photo_response = client.get(f"/photos/{photo_id}")
     assert photo_response.status_code == 200
-    assert photo_response.content == b"fake-image-bytes"
+    assert photo_response.content == b"\xff\xd8\xff" + b"fake-image-bytes"
 
 
 def test_get_photo_missing_returns_404(client):
@@ -313,12 +313,12 @@ def test_entry_detail_includes_related_photos(client):
     first = client.post(
         "/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "Monogram", "bean_name": "Mango", "score": 7})},
-        files=[("photos", ("bag1.jpg", b"fake-image-bytes-1", "image/jpeg"))],
+        files=[("photos", ("bag1.jpg", b"\xff\xd8\xff" + b"fake-image-bytes-1", "image/jpeg"))],
     ).json()
     second = client.post(
         "/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "Monogram", "bean_name": "Mango", "score": 8})},
-        files=[("photos", ("bag2.jpg", b"fake-image-bytes-2", "image/jpeg"))],
+        files=[("photos", ("bag2.jpg", b"\xff\xd8\xff" + b"fake-image-bytes-2", "image/jpeg"))],
     ).json()
 
     follow_up = client.get(f"/entries/{second['id']}")
@@ -326,3 +326,64 @@ def test_entry_detail_includes_related_photos(client):
     assert len(body["photos"]) == 1
     assert len(body["related_photos"]) == 1
     assert body["related_photos"][0]["entry_id"] == first["id"]
+
+
+# --- security hardening: upload validation + AI-endpoint cooldowns ---
+
+
+def test_create_entry_rejects_non_image_upload(client):
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
+        files=[("photos", ("bag.jpg", b"this is not an image, just text", "image/jpeg"))],
+    )
+    assert response.status_code == 422
+
+
+def test_create_entry_rejects_oversized_photo(client):
+    from backend.routers.entries import MAX_PHOTO_BYTES
+
+    oversized = b"\xff\xd8\xff" + b"0" * MAX_PHOTO_BYTES
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
+        files=[("photos", ("bag.jpg", oversized, "image/jpeg"))],
+    )
+    assert response.status_code == 422
+
+
+def test_create_entry_rejects_too_many_photos(client):
+    from backend.routers.entries import MAX_PHOTOS_PER_ENTRY
+
+    photo = ("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake", "image/jpeg"))
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
+        files=[photo] * (MAX_PHOTOS_PER_ENTRY + 1),
+    )
+    assert response.status_code == 422
+
+
+def test_create_entry_rejecting_a_photo_leaves_no_entry_behind(client, conn):
+    client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
+        files=[("photos", ("bag.jpg", b"not an image", "image/jpeg"))],
+    )
+    count = conn.execute("SELECT COUNT(*) AS n FROM entries").fetchone()["n"]
+    assert count == 0
+
+
+def test_reextract_second_immediate_call_is_cooled_down(client):
+    response = client.post(
+        "/entries",
+        data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
+        files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
+    )
+    entry_id = response.json()["id"]
+
+    first = client.post(f"/entries/{entry_id}/reextract")
+    assert first.status_code == 200
+
+    second = client.post(f"/entries/{entry_id}/reextract")
+    assert second.status_code == 429

@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from backend import database, logging_config, photos
+from backend import database, logging_config, photos, rate_limit
 from backend.main import app
 
 
@@ -10,6 +10,17 @@ def _no_real_api_key(monkeypatch):
     # Guarantees the test suite never makes a real network call to Anthropic,
     # regardless of what's set in the environment it happens to run in.
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    # The cooldown tracker is a module-level dict so it survives across
+    # requests within a real run (that's the point) - but that also means
+    # it survives across tests in the same pytest process. Every test gets
+    # a fresh database via tmp_path, so entry IDs restart from 1 each time;
+    # without this, an early test's cooldown on "entry 1" would wrongly
+    # block a later, unrelated test's request to its own "entry 1".
+    rate_limit._last_call.clear()
 
 
 @pytest.fixture()

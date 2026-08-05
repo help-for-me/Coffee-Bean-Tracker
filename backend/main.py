@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +22,21 @@ from .logging_config import setup_logging
 from .routers import bean_profiles, entries, insights, photos
 
 FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+
+
+def resolve_spa_path(full_path: str, base: Path) -> Optional[Path]:
+    # full_path comes straight from the URL, so a request like
+    # "../../etc/passwd" must never be allowed to resolve outside `base` -
+    # resolve() collapses any ".." segments first, and is_relative_to()
+    # then confirms the result didn't escape the intended folder. Returns
+    # None for "doesn't exist" and "tried to escape" alike, since the
+    # caller treats both the same way (fall back to index.html).
+    if not full_path:
+        return None
+    candidate = (base / full_path).resolve()
+    if not candidate.is_relative_to(base.resolve()):
+        return None
+    return candidate if candidate.is_file() else None
 
 
 @asynccontextmanager
@@ -63,7 +79,7 @@ if FRONTEND_DIST.exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        candidate = FRONTEND_DIST / full_path
-        if full_path and candidate.is_file():
+        candidate = resolve_spa_path(full_path, FRONTEND_DIST)
+        if candidate is not None:
             return FileResponse(candidate)
         return FileResponse(FRONTEND_DIST / "index.html")

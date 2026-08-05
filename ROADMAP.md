@@ -451,7 +451,18 @@ env vars, using the `settings` table already present in the schema.
 
 ### 1.5.0 - Multi-user/auth
 Low priority. Uses the `users` table and nullable `user_id` columns already
-present in the schema since 0.1.0.
+present in the schema since 0.1.0. There's no login of any kind before
+this milestone - every endpoint is reachable by anyone who can reach the
+instance, which is the accepted tradeoff for a single-user self-hosted
+app until this lands. Scope CORS (currently `allow_origins=["*"]`,
+appropriate only while there's no login to protect) down to the app's own
+origin(s) as part of the same change.
+
+Also worth revisiting then: running the Docker container as a non-root
+user. Deferred for now since `data/` is a bind-mounted volume on Iron and
+changing the container's user without first confirming what owns that
+folder on the host risks breaking write access to the database on the
+next deploy.
 
 ### 1.6.0 - Visual design pass
 Lowest priority, deliberately last functional-adjacent item. Colors,
