@@ -544,6 +544,45 @@ specific sub-version:
 
 ---
 
+## AI-suggested features
+
+Ideas Claude has floated unprompted, not requested by the user. **None of
+these get built without explicit agreement first** - this list exists so a
+good idea doesn't get lost, not as an approved backlog. Move an item out of
+this section (into a real MINOR/MAJOR slot, or MAJOR 2's candidate list)
+once it's actually been agreed to; drop it entirely if it turns out not to
+be wanted.
+
+- **Freshness flag on entries.** `roast_date` is already captured for most
+  bags - flag or visually mark entries past a typical peak-freshness
+  window (roughly 2-8 weeks post-roast depending on process) on History/
+  Entry Detail, so a stale bag doesn't get blamed on the bean itself.
+- **Cost-per-cup / value ranking.** `price_paid` and `bag_weight_g` are
+  already captured - a "best value" ranking (score relative to $/100g or
+  estimated $/cup) alongside the existing "best score" rankings in
+  Insights, for the days budget matters as much as flavour.
+- **Roaster-level leaderboard.** Every existing Insights ranking groups by
+  bean; grouping by roaster instead (average across everything from a
+  given roaster) answers a different, also-useful question - "which
+  roasters do I trust," not just "which specific bag."
+- **Proactive repeat-purchase surfacing.** 0.8.0's fuzzy matching already
+  merges a re-typed identity into the right profile after the fact - this
+  would surface it *before* saving ("You've had this before, rated it
+  8.5 on 2026-06-01") right in the New Entry form, using the same fuzzy
+  match while typing rather than only on submit.
+- **Tasting-note trends over time.** The favourite-notes ranking (0.4.0)
+  is a snapshot; a month-by-month view of which notes show up and how
+  they score would show a palate shifting over time, not just where it
+  currently stands.
+- **Origin map view.** A simple world map shading the countries logged so
+  far (by count or average score) - Insights' rankings are all lists;
+  this would be the one visual/spatial view.
+- **"Try something new" nudge.** If recent entries cluster heavily on 1-2
+  roasters, a gentle suggestion to branch out - low-effort, ties into
+  MAJOR 2's already-listed web-lookup enrichment idea if that ever lands.
+
+---
+
 ## MAJOR 3 - iOS offline-first companion app (concept)
 
 Concept stage only, not scoped in detail - captured here because it's a
