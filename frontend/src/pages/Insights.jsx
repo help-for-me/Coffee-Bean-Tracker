@@ -11,12 +11,32 @@ export default function Insights() {
   const [window_, setWindow] = useState('all_time')
 
   useEffect(() => {
-    getInsights()
-      .then((data) => {
-        setInsights(data)
-        setWindow(data.recent_window.applicable ? 'recent' : 'all_time')
-      })
-      .catch((e) => setError(e.message))
+    let isFirstLoad = true
+    const load = () => {
+      getInsights()
+        .then((data) => {
+          setInsights(data)
+          // Only pick a default toggle position on the very first load - a
+          // background refresh shouldn't yank the user back to "Recent"
+          // if they'd deliberately switched to "All time".
+          if (isFirstLoad) {
+            setWindow(data.recent_window.applicable ? 'recent' : 'all_time')
+            isFirstLoad = false
+          }
+        })
+        .catch((e) => setError(e.message))
+    }
+
+    load()
+    // Coming back to this tab (e.g. after adding a coffee elsewhere) should
+    // show current numbers, not whatever was loaded when the page first
+    // opened - the charts are cheap to refetch (no AI cost, unlike the
+    // narrative summary below, which stays manual-refresh only).
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
   if (error) return <div className="p-6 text-sm text-red-600">{error}</div>

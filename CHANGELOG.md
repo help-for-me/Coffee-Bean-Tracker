@@ -12,6 +12,11 @@ This project uses [Semantic Versioning](https://semver.org/).
   Insights summary - in Canadian English, per a new standing policy (see
   CLAUDE.md). A test guards docs and backend prose against drifting back
   to American-only spellings.
+- The Insights page's charts now refresh automatically when the tab
+  regains focus (e.g. switching back from adding a coffee), instead of
+  only updating on the next full page visit. The AI-generated summary
+  still only ever updates via the manual "Regenerate" button - a
+  background refresh never spends an API call on its own.
 
 ### Added
 - Logging now captures what it needs to for the 1.0.1/1.0.2 manual tests
