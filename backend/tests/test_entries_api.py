@@ -5,7 +5,7 @@ from backend.extractor.base import BeanExtractor
 
 
 def post_entry(client, **fields):
-    return client.post("/entries", data={"data": json.dumps(fields)})
+    return client.post("/api/entries", data={"data": json.dumps(fields)})
 
 
 def test_create_entry_endpoint(client):
@@ -32,13 +32,13 @@ def test_create_entry_rejects_out_of_range_score(client):
 
 def test_autocomplete_returns_prefix_matches(client):
     post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
-    response = client.get("/bean-profiles/autocomplete", params={"q": "Stump"})
+    response = client.get("/api/bean-profiles/autocomplete", params={"q": "Stump"})
     assert response.status_code == 200
     assert response.json()[0]["roaster"] == "Stumptown"
 
 
 def test_autocomplete_empty_query_returns_empty_list(client):
-    response = client.get("/bean-profiles/autocomplete", params={"q": ""})
+    response = client.get("/api/bean-profiles/autocomplete", params={"q": ""})
     assert response.status_code == 200
     assert response.json() == []
 
@@ -46,7 +46,7 @@ def test_autocomplete_empty_query_returns_empty_list(client):
 def test_list_entries_endpoint_newest_first(client):
     post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
     post_entry(client, entry_type="bag", roaster="Intelligentsia", bean_name="Black Cat", score=7)
-    response = client.get("/entries")
+    response = client.get("/api/entries")
     assert response.status_code == 200
     body = response.json()
     assert len(body) == 2
@@ -56,7 +56,7 @@ def test_list_entries_endpoint_newest_first(client):
 def test_list_entries_search_query(client):
     post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
     post_entry(client, entry_type="bag", roaster="Intelligentsia", bean_name="Black Cat", score=7)
-    response = client.get("/entries", params={"q": "Intelli"})
+    response = client.get("/api/entries", params={"q": "Intelli"})
     assert response.status_code == 200
     body = response.json()
     assert len(body) == 1
@@ -69,7 +69,7 @@ def test_add_rating_endpoint_appends_rating(client):
     )
     entry_id = create_response.json()["id"]
 
-    response = client.post(f"/entries/{entry_id}/ratings", json={"score": 9})
+    response = client.post(f"/api/entries/{entry_id}/ratings", json={"score": 9})
     assert response.status_code == 201
     body = response.json()
     assert len(body["ratings"]) == 2
@@ -77,13 +77,13 @@ def test_add_rating_endpoint_appends_rating(client):
 
 
 def test_add_rating_for_missing_entry_returns_404(client):
-    response = client.post("/entries/999/ratings", json={"score": 9})
+    response = client.post("/api/entries/999/ratings", json={"score": 9})
     assert response.status_code == 404
 
 
 def test_create_entry_with_photo_creates_entry_photo_row(client, conn):
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={
             "data": json.dumps(
                 {"entry_type": "bag", "roaster": "Stumptown", "bean_name": "Hair Bender", "score": 8}
@@ -104,7 +104,7 @@ def test_create_entry_with_photo_resolves_to_failed_without_api_key(client):
     # itself must show 'pending' immediately (the whole point of running
     # extraction in the background: instant save, no waiting screen).
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={
             "data": json.dumps(
                 {"entry_type": "bag", "roaster": "Stumptown", "bean_name": "Hair Bender", "score": 8}
@@ -120,7 +120,7 @@ def test_create_entry_with_photo_resolves_to_failed_without_api_key(client):
     # response, so by now it's already been attempted and resolved. This
     # proves the app never crashes and never leaves an entry stuck 'pending'
     # when the key is missing or bad.
-    follow_up = client.get(f"/entries/{entry_id}")
+    follow_up = client.get(f"/api/entries/{entry_id}")
     assert follow_up.json()["extraction_status"] == "failed"
 
 
@@ -134,7 +134,7 @@ def test_create_entry_without_photo_is_not_applicable(client):
 
 def test_create_bag_entry_with_photo_and_no_identity_succeeds(client):
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "score": 7})},
         files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
@@ -145,7 +145,7 @@ def test_create_bag_entry_with_photo_and_no_identity_succeeds(client):
 
 
 def test_create_bag_entry_with_no_identity_and_no_photo_rejected(client):
-    response = client.post("/entries", data={"data": json.dumps({"entry_type": "bag", "score": 7})})
+    response = client.post("/api/entries", data={"data": json.dumps({"entry_type": "bag", "score": 7})})
     assert response.status_code == 422
 
 
@@ -153,7 +153,7 @@ def test_create_cafe_cup_with_photo_and_no_identity_rejected(client):
     # Cafe cups have nothing printed to photograph for identity, unlike
     # bags - typed identity is always required for them.
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "cafe_cup", "score": 7})},
         files=[("photos", ("menu.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
@@ -167,7 +167,7 @@ class _FakeIdentityExtractor(BeanExtractor):
 
 def test_create_bag_entry_with_photo_no_identity_extraction_resolves_it(client):
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "score": 7})},
         files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
@@ -179,7 +179,7 @@ def test_create_bag_entry_with_photo_no_identity_extraction_resolves_it(client):
     # with a fake extractor to verify the resolution path itself.
     run_extraction(entry_id, [], extractor=_FakeIdentityExtractor())
 
-    follow_up = client.get(f"/entries/{entry_id}")
+    follow_up = client.get(f"/api/entries/{entry_id}")
     body = follow_up.json()
     assert body["bean_profile"]["roaster"] == "Monogram"
     assert body["bean_profile"]["is_provisional"] is False
@@ -190,7 +190,7 @@ def test_create_bag_entry_with_photo_no_identity_extraction_resolves_it(client):
 
 def test_patch_entry_updates_field(client):
     entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=7).json()["id"]
-    response = client.patch(f"/entries/{entry_id}", json={"roast_level": "Medium"})
+    response = client.patch(f"/api/entries/{entry_id}", json={"roast_level": "Medium"})
     assert response.status_code == 200
     assert response.json()["roast_level"] == "Medium"
 
@@ -199,52 +199,52 @@ def test_patch_entry_can_clear_field_to_null(client):
     entry_id = post_entry(
         client, entry_type="bag", roaster="X", bean_name="Y", score=7, batch_number="L-1"
     ).json()["id"]
-    response = client.patch(f"/entries/{entry_id}", json={"batch_number": None})
+    response = client.patch(f"/api/entries/{entry_id}", json={"batch_number": None})
     assert response.status_code == 200
     assert response.json()["batch_number"] is None
 
 
 def test_patch_entry_missing_returns_404(client):
-    response = client.patch("/entries/999", json={"roast_level": "Medium"})
+    response = client.patch("/api/entries/999", json={"roast_level": "Medium"})
     assert response.status_code == 404
 
 
 def test_delete_entry_removes_it(client):
     entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=7).json()["id"]
-    response = client.delete(f"/entries/{entry_id}")
+    response = client.delete(f"/api/entries/{entry_id}")
     assert response.status_code == 204
-    assert client.get(f"/entries/{entry_id}").status_code == 404
+    assert client.get(f"/api/entries/{entry_id}").status_code == 404
 
 
 def test_delete_entry_removes_photo_file_from_disk(client, tmp_path):
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
         files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     entry_id = response.json()["id"]
     photo_id = response.json()["photos"][0]["id"]
-    assert client.get(f"/photos/{photo_id}").status_code == 200
+    assert client.get(f"/api/photos/{photo_id}").status_code == 200
 
-    client.delete(f"/entries/{entry_id}")
+    client.delete(f"/api/entries/{entry_id}")
 
-    assert client.get(f"/photos/{photo_id}").status_code == 404
+    assert client.get(f"/api/photos/{photo_id}").status_code == 404
 
 
 def test_delete_entry_missing_returns_404(client):
-    assert client.delete("/entries/999").status_code == 404
+    assert client.delete("/api/entries/999").status_code == 404
 
 
 def test_reextract_entry_resets_to_pending(client):
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
         files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     entry_id = response.json()["id"]
-    assert client.get(f"/entries/{entry_id}").json()["extraction_status"] == "failed"
+    assert client.get(f"/api/entries/{entry_id}").json()["extraction_status"] == "failed"
 
-    reextract_response = client.post(f"/entries/{entry_id}/reextract")
+    reextract_response = client.post(f"/api/entries/{entry_id}/reextract")
     assert reextract_response.status_code == 200
     # TestClient runs the background task synchronously again, so by the
     # time this returns it's already flipped back to failed (no real key) -
@@ -254,12 +254,12 @@ def test_reextract_entry_resets_to_pending(client):
 
 def test_reextract_entry_without_photos_rejected(client):
     entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=7).json()["id"]
-    response = client.post(f"/entries/{entry_id}/reextract")
+    response = client.post(f"/api/entries/{entry_id}/reextract")
     assert response.status_code == 422
 
 
 def test_reextract_missing_entry_404(client):
-    assert client.post("/entries/999/reextract").status_code == 404
+    assert client.post("/api/entries/999/reextract").status_code == 404
 
 
 def test_patch_rating_updates_score(client):
@@ -267,61 +267,61 @@ def test_patch_rating_updates_score(client):
     entry_id = entry_response.json()["id"]
     rating_id = entry_response.json()["ratings"][0]["id"]
 
-    response = client.patch(f"/entries/{entry_id}/ratings/{rating_id}", json={"score": 9})
+    response = client.patch(f"/api/entries/{entry_id}/ratings/{rating_id}", json={"score": 9})
     assert response.status_code == 200
     assert response.json()["ratings"][0]["score"] == 9
 
 
 def test_patch_rating_missing_returns_404(client):
     entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=6).json()["id"]
-    response = client.patch(f"/entries/{entry_id}/ratings/999", json={"score": 9})
+    response = client.patch(f"/api/entries/{entry_id}/ratings/999", json={"score": 9})
     assert response.status_code == 404
 
 
 def test_delete_rating_endpoint_removes_it(client):
     entry_response = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=6)
     entry_id = entry_response.json()["id"]
-    second_rating_id = client.post(f"/entries/{entry_id}/ratings", json={"score": 8}).json()["ratings"][1]["id"]
+    second_rating_id = client.post(f"/api/entries/{entry_id}/ratings", json={"score": 8}).json()["ratings"][1]["id"]
 
-    response = client.delete(f"/entries/{entry_id}/ratings/{second_rating_id}")
+    response = client.delete(f"/api/entries/{entry_id}/ratings/{second_rating_id}")
     assert response.status_code == 200
     assert len(response.json()["ratings"]) == 1
 
 
 def test_delete_rating_endpoint_missing_returns_404(client):
     entry_id = post_entry(client, entry_type="bag", roaster="X", bean_name="Y", score=6).json()["id"]
-    assert client.delete(f"/entries/{entry_id}/ratings/999").status_code == 404
+    assert client.delete(f"/api/entries/{entry_id}/ratings/999").status_code == 404
 
 
 def test_get_photo_serves_file(client):
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
         files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     photo_id = response.json()["photos"][0]["id"]
-    photo_response = client.get(f"/photos/{photo_id}")
+    photo_response = client.get(f"/api/photos/{photo_id}")
     assert photo_response.status_code == 200
     assert photo_response.content == b"\xff\xd8\xff" + b"fake-image-bytes"
 
 
 def test_get_photo_missing_returns_404(client):
-    assert client.get("/photos/999").status_code == 404
+    assert client.get("/api/photos/999").status_code == 404
 
 
 def test_entry_detail_includes_related_photos(client):
     first = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "Monogram", "bean_name": "Mango", "score": 7})},
         files=[("photos", ("bag1.jpg", b"\xff\xd8\xff" + b"fake-image-bytes-1", "image/jpeg"))],
     ).json()
     second = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "Monogram", "bean_name": "Mango", "score": 8})},
         files=[("photos", ("bag2.jpg", b"\xff\xd8\xff" + b"fake-image-bytes-2", "image/jpeg"))],
     ).json()
 
-    follow_up = client.get(f"/entries/{second['id']}")
+    follow_up = client.get(f"/api/entries/{second['id']}")
     body = follow_up.json()
     assert len(body["photos"]) == 1
     assert len(body["related_photos"]) == 1
@@ -333,7 +333,7 @@ def test_entry_detail_includes_related_photos(client):
 
 def test_create_entry_rejects_non_image_upload(client):
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
         files=[("photos", ("bag.jpg", b"this is not an image, just text", "image/jpeg"))],
     )
@@ -345,7 +345,7 @@ def test_create_entry_rejects_oversized_photo(client):
 
     oversized = b"\xff\xd8\xff" + b"0" * MAX_PHOTO_BYTES
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
         files=[("photos", ("bag.jpg", oversized, "image/jpeg"))],
     )
@@ -357,7 +357,7 @@ def test_create_entry_rejects_too_many_photos(client):
 
     photo = ("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake", "image/jpeg"))
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
         files=[photo] * (MAX_PHOTOS_PER_ENTRY + 1),
     )
@@ -366,7 +366,7 @@ def test_create_entry_rejects_too_many_photos(client):
 
 def test_create_entry_rejecting_a_photo_leaves_no_entry_behind(client, conn):
     client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
         files=[("photos", ("bag.jpg", b"not an image", "image/jpeg"))],
     )
@@ -376,14 +376,14 @@ def test_create_entry_rejecting_a_photo_leaves_no_entry_behind(client, conn):
 
 def test_reextract_second_immediate_call_is_cooled_down(client):
     response = client.post(
-        "/entries",
+        "/api/entries",
         data={"data": json.dumps({"entry_type": "bag", "roaster": "X", "bean_name": "Y", "score": 7})},
         files=[("photos", ("bag.jpg", b"\xff\xd8\xff" + b"fake-image-bytes", "image/jpeg"))],
     )
     entry_id = response.json()["id"]
 
-    first = client.post(f"/entries/{entry_id}/reextract")
+    first = client.post(f"/api/entries/{entry_id}/reextract")
     assert first.status_code == 200
 
-    second = client.post(f"/entries/{entry_id}/reextract")
+    second = client.post(f"/api/entries/{entry_id}/reextract")
     assert second.status_code == 429

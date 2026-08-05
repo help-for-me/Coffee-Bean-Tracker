@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import AdvancedRatingFields from '../components/AdvancedRatingFields'
+import AdvancedRatingToggle from '../components/AdvancedRatingToggle'
+import ScoreAndNotesFields from '../components/ScoreAndNotesFields'
 import { listEntries, addRating } from '../api'
 import { emptyAdvancedRating, ratingPayloadFromAdvanced } from '../utils/ratingPayload'
 
@@ -95,37 +96,19 @@ export default function RatePrevious() {
       </h1>
       <p className="mb-4 text-sm text-gray-500">Rate it again</p>
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700">Score (0-10)</label>
-        <input
-          type="number"
-          min="0"
-          max="10"
-          step="0.5"
-          value={score}
-          onChange={(e) => setScore(e.target.value)}
-          required
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-        />
-      </div>
+      <ScoreAndNotesFields
+        score={score}
+        onScore={(e) => setScore(e.target.value)}
+        narrativeNotes={narrativeNotes}
+        onNarrativeNotes={(e) => setNarrativeNotes(e.target.value)}
+      />
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700">Notes (optional)</label>
-        <input
-          value={narrativeNotes}
-          onChange={(e) => setNarrativeNotes(e.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-        />
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setShowAdvanced((v) => !v)}
-        className="mb-2 block text-sm font-medium text-purple-700"
-      >
-        {showAdvanced ? '- Advanced' : '+ Advanced'}
-      </button>
-      {showAdvanced && <AdvancedRatingFields value={advanced} onChange={setAdvanced} />}
+      <AdvancedRatingToggle
+        show={showAdvanced}
+        onToggle={() => setShowAdvanced((v) => !v)}
+        value={advanced}
+        onChange={setAdvanced}
+      />
 
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 

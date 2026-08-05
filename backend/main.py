@@ -58,10 +58,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(entries.router)
-app.include_router(bean_profiles.router)
-app.include_router(insights.router)
-app.include_router(photos.router)
+# All API routes live under /api - the frontend has its own pages at some
+# of these same-looking paths (e.g. its Insights page is also "/insights"),
+# so without this prefix the two would collide: since these routers are
+# registered first, a browser refresh on the Insights page or on an entry's
+# detail page would hit the API route below instead of the SPA catch-all
+# further down, and show raw JSON instead of the app.
+app.include_router(entries.router, prefix="/api")
+app.include_router(bean_profiles.router, prefix="/api")
+app.include_router(insights.router, prefix="/api")
+app.include_router(photos.router, prefix="/api")
 
 
 @app.get("/health")

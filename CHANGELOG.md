@@ -7,6 +7,21 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- All API routes now live under `/api` - previously the API and the
+  frontend used some of the same paths (e.g. both had an `/insights`),
+  so in the deployed single-container setup, refreshing the page (or
+  opening a bookmarked/shared link) while on Insights or an entry's
+  detail page served raw JSON instead of the app. Deep links and
+  refreshes on every page now work correctly.
+
+### Changed
+- Removed some duplicated form code between the New Entry and Rate a
+  Previous Bean screens (score/notes fields, the Advanced section
+  toggle) and the three near-identical Acidity/Body/Sweetness inputs
+  within it - same fields on screen, just written once instead of
+  copy-pasted.
+
 ### Security
 - Fixed the static-file fallback route so it can no longer resolve or
   serve a path outside the intended frontend build directory.

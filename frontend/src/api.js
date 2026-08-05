@@ -1,7 +1,12 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+// Every backend route lives under /api (see backend/main.py) so it never
+// collides with one of the frontend's own page paths - both this helper
+// and photoUrl() below need the prefix, since photoUrl() builds a URL
+// directly for an <img>/<a> tag instead of going through request().
+const API_PREFIX = '/api'
 
 async function request(path, options = {}) {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
@@ -61,7 +66,7 @@ export function generateNarrative(window_) {
 }
 
 export function photoUrl(photoId) {
-  return `${BASE_URL}/photos/${photoId}`
+  return `${BASE_URL}${API_PREFIX}/photos/${photoId}`
 }
 
 export function reextractEntry(id) {
