@@ -88,3 +88,17 @@ export function updateRating(entryId, ratingId, data) {
 export function deleteRating(entryId, ratingId) {
   return request(`/entries/${entryId}/ratings/${ratingId}`, { method: 'DELETE' })
 }
+
+export function confirmEnrichmentCandidate(beanProfileId, url, title) {
+  return request(`/bean-profiles/${beanProfileId}/enrichment/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ url, title }),
+  })
+}
+
+export function reprocessEnrichment(beanProfileId, context) {
+  return request(`/bean-profiles/${beanProfileId}/enrichment/reprocess`, {
+    method: 'POST',
+    body: JSON.stringify({ context: context || null }),
+  })
+}

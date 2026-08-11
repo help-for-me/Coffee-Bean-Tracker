@@ -8,6 +8,7 @@ CoFermentStatus = Literal["yes", "no", "unknown"]
 BrewStyle = Literal["Pour Over", "Espresso", "French Press", "Cafe-made", "Other"]
 Repurchase = Literal["yes", "no", "maybe"]
 WindowType = Literal["all_time", "recent"]
+EnrichmentStatus = Literal["pending", "needs_review", "confirmed", "no_match", "failed"]
 
 
 class RatingFields(BaseModel):
@@ -86,6 +87,7 @@ class EntryUpdate(BaseModel):
     bag_weight_g: Optional[int] = None
     batch_number: Optional[str] = None
     roast_location: Optional[str] = None
+    website_description: Optional[str] = None
 
 
 class RatingUpdate(BaseModel):
@@ -98,11 +100,37 @@ class RatingUpdate(BaseModel):
     repurchase: Optional[Repurchase] = None
 
 
+class EnrichmentCandidate(BaseModel):
+    url: str
+    title: str
+    snippet: Optional[str] = None
+
+
+class EnrichmentOut(BaseModel):
+    status: EnrichmentStatus
+    candidates: list[EnrichmentCandidate]
+    source_url: Optional[str]
+    checked_at: Optional[datetime]
+
+
+class EnrichmentConfirm(BaseModel):
+    url: str
+    title: str
+
+
+class EnrichmentReprocess(BaseModel):
+    # Set when the user rejected every candidate ("none of these") and gave
+    # a hint for the next search - also usable for a plain manual reprocess
+    # with no hint at all.
+    context: Optional[str] = None
+
+
 class BeanProfileOut(BaseModel):
     id: int
     roaster: str
     bean_name: str
     is_provisional: bool
+    enrichment: Optional[EnrichmentOut] = None
 
 
 class FarmOut(BaseModel):
@@ -149,6 +177,7 @@ class EntryOut(BaseModel):
     bag_weight_g: Optional[int]
     batch_number: Optional[str]
     roast_location: Optional[str]
+    website_description: Optional[str]
     farms: list[FarmOut]
     photos: list[PhotoOut]
     related_photos: list[PhotoOut]

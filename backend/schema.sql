@@ -45,6 +45,7 @@ CREATE TABLE entries (
     bag_weight_g INTEGER,
     batch_number TEXT,                -- roast/lot number, when the bag prints one
     roast_location TEXT,              -- where the ROASTER roasted it, e.g. "Vancouver, BC" — not where it was grown (that's origin_country/region)
+    website_description TEXT,         -- roaster's own descriptive copy about this coffee, from 1.9.0 website enrichment (never printed on a label, so kept distinct from printed_tasting_notes)
 
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -119,4 +120,20 @@ CREATE TABLE insight_narratives (
     window_type TEXT,                -- 'all_time' or 'recent'
     summary_text TEXT,
     generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Unused until 1.9.0 roaster website enrichment. One row per bean_profile,
+-- created the first time a lookup is attempted (a missing row means "never
+-- attempted yet" - see crud.maybe_start_enrichment). Never more than one
+-- row per profile; a reprocess resets this row in place rather than adding
+-- a new one.
+CREATE TABLE bean_profile_enrichment (
+    bean_profile_id INTEGER PRIMARY KEY REFERENCES bean_profiles(id),
+    status TEXT NOT NULL DEFAULT 'pending',  -- 'pending' / 'needs_review' / 'confirmed' / 'no_match' / 'failed'
+    candidates TEXT,          -- JSON list of {url, title, snippet}, set only while status = 'needs_review'
+    source_url TEXT,          -- the confirmed roaster product page, once status = 'confirmed'
+    source_path TEXT,         -- local path to the saved fetched page text (see enrichment_sources.py)
+    extra_context TEXT,       -- user-supplied hint from a "none of these" rejection, used by the next lookup
+    checked_at TIMESTAMP,     -- when the most recent lookup attempt finished
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

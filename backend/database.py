@@ -11,7 +11,7 @@ SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 # against an existing file, so anything beyond that needs an additive
 # migration below. Migrations must never be destructive - by the time most
 # of these run, the database already has real entries in it.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 MIGRATIONS: dict[int, str] = {
     # 0.2.1: roast_location field + entry_farms table for multi-farm bags.
@@ -28,6 +28,21 @@ MIGRATIONS: dict[int, str] = {
     # 0.5.0: photo-first identity - provisional bean profiles.
     2: """
     ALTER TABLE bean_profiles ADD COLUMN is_provisional INTEGER NOT NULL DEFAULT 0;
+    """,
+    # 1.9.0: roaster website enrichment.
+    3: """
+    ALTER TABLE entries ADD COLUMN website_description TEXT;
+
+    CREATE TABLE bean_profile_enrichment (
+        bean_profile_id INTEGER PRIMARY KEY REFERENCES bean_profiles(id),
+        status TEXT NOT NULL DEFAULT 'pending',
+        candidates TEXT,
+        source_url TEXT,
+        source_path TEXT,
+        extra_context TEXT,
+        checked_at TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     """,
 }
 
