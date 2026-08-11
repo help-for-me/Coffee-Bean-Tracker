@@ -12,12 +12,29 @@ language, but NEVER invent or restate a number that isn't in this data, and
 never calculate anything yourself (e.g. don't average numbers together that
 aren't already averaged for you).
 
+by_process/by_origin_country/by_tasting_note are each a ranked "items" list
+plus a "significance" verdict comparing the TOP TWO items in that ranking
+using a real statistical test:
+- Items are already sorted by adjusted_score, not avg_score. adjusted_score
+  pulls thin-sample items toward the overall average, so a single 9-out-of-
+  10 rating can't outrank an item backed by ten ratings - always use
+  adjusted_score's ordering, never re-rank by avg_score yourself.
+- significance.comparable=false means there isn't even enough data to test
+  (fewer than 2 groups, or fewer than 2 ratings on one side).
+- significance.significant=false means the gap between the top two could
+  plausibly just be noise, not a real preference, even if their averages
+  look different.
+
 This must read as an actual recommendation, not a recap: not "your scores
 trended up in July" but something closer to "you consistently rate Honey-
 process Colombian coffees with stone fruit notes highest - look for those."
-Ground the recommendation in the single strongest pattern actually present
-in the data (by process, origin, or tasting note) - don't try to cover
-every pattern you notice, just the clearest one.
+Ground it in the top-ranked item (by adjusted_score) from whichever
+dimension - process, origin, or tasting note - has significant=true. If
+NONE of the three dimensions have significant=true, do not pick one
+anyway: say plainly that there's no clear statistically meaningful
+preference yet in the logged data. Never claim a preference the
+significance verdict doesn't support, even when one average looks higher
+by eye - "verifiable and rigorous" beats "interesting-sounding."
 
 Time window: {window_label}
 
@@ -25,13 +42,12 @@ Stats:
 {stats_json}
 
 Write ONE or TWO sentences, second person ("you"), specific - mention
-actual process/origin/tasting-note names from the data. Say it once, plainly,
-and stop - no restating the same point in different words, no hedging
-("might", "could", "explore"), no closing filler sentence that just
-softens or repeats what you already said. If there's too little data for a
-clear pattern, say so briefly rather than stretching a weak one. Write in
-Canadian English (e.g. "flavour", "favourite", "colour"). No preamble, no
-markdown, just the recommendation text itself."""
+actual process/origin/tasting-note names from the data when there's a real
+pattern to report. Say it once, plainly, and stop - no restating the same
+point in different words, no hedging ("might", "could", "explore"), no
+closing filler sentence that just softens or repeats what you already
+said. Write in Canadian English (e.g. "flavour", "favourite", "colour").
+No preamble, no markdown, just the recommendation text itself."""
 
 
 class ClaudeInsightGenerator(InsightGenerator):

@@ -27,6 +27,16 @@ This project uses [Semantic Versioning](https://semver.org/).
   until now) - plus a second dropdown to slice whichever attribute is
   showing down to a single brew method (e.g. "favourite tasting notes
   when brewed as Espresso").
+- Statistically rigorous "favourite X" rankings: a tasting note rated
+  once at a 9 no longer outranks one rated ten times averaging 8.5 -
+  rankings now use a sample-size-aware adjusted score instead of the raw
+  average, and each ranked chart shows whether the gap between the top
+  two is an actual statistically significant difference or could just be
+  noise (including saying plainly when there isn't enough data to tell
+  either way). The AI-generated Insights summary now uses the same
+  adjusted rankings and significance checks, so it states outright when
+  no dimension shows a real preference yet instead of overclaiming from a
+  thin sample.
 - Logging now captures what it needs to for the 1.0.1/1.0.2 manual tests
   to be completed by reviewing the exported log file, rather than tracked
   by hand: every entry (type, typed-vs-photo identity, score) and every

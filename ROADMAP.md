@@ -425,16 +425,20 @@ dimension.
   note/origin/process), not just one more flat ranked dimension like
   0.4.0's breakdowns. Worth designing together with the attribute
   switcher rather than bolting on separately.
-- **Statistical rigor for the "favourite X" rankings** - skipped, not
-  built here. Flagged in 0.4.0's output as a real gap (a single average
-  with no sense of spread or sample size is misleading once real data has
-  outliers), but ROADMAP itself already calls out that this needs a real
-  decision, not just "add error bars": showing a min-max range or
-  standard deviation alongside the average vs. ranking by a
-  lower-confidence-bound score (mean minus one standard error, or a
-  proper Wilson/Bayesian-average adjustment) produce genuinely different
-  rankings, not just different visuals. Held for the user's input rather
-  than picked unilaterally.
+- **Statistical rigor for the "favourite X" rankings** - built 2026-08-05,
+  once the decision this section originally flagged as needing the user's
+  input was actually made: rank by an empirical-Bayes-shrunk score (each
+  item's average pulled toward the overall mean, in proportion to how few
+  ratings back it - a note rated once at a 9 no longer outranks one rated
+  ten times averaging 8.5, the literal example this gap was named for),
+  plus a real significance check (Welch's t-test between the top two
+  items) that says so plainly when the gap could just be noise, or when
+  there isn't even enough data to test it. New `scipy` dependency for the
+  test itself - not hand-rolled, given the point is to be verifiably
+  correct. The AI-generated Insights summary (0.9.0) was also updated to
+  use this instead of raw averages, and to say outright when no dimension
+  shows a statistically real preference, rather than manufacturing a
+  confident-sounding claim from too little data.
 
 Built on branch `claude/1.2.0-richer-browsing`, opened as a draft PR left
 unmerged per the milestone workflow. History gained entry-type and
@@ -444,8 +448,11 @@ origin/process/brew method), plus a second "when brewed as ___" dropdown
 that slices whichever attribute is showing by brew method
 (`GET /insights?brew_style=...`, applied to the process/origin/tasting-
 note breakdowns - not to the brew-method breakdown itself, which is the
-dimension being sliced by). Full backend test suite passing; both
-controls also verified against a live server and a real browser.
+dimension being sliced by), and each ranked chart now shows a
+significance line underneath it. Full backend test suite passing,
+including the exact "single 9 vs. ten ratings averaging 8.5" scenario as
+a real test case; all of it also verified against a live server and a
+real browser.
 
 ### 1.3.0 - Ollama provider
 Low priority. `BeanExtractor` was designed swappable from 0.2.0 onward

@@ -58,7 +58,7 @@ export default function Insights() {
 
   const mostRepurchased = insights.most_repurchased[window_]
   const activeAttribute = ATTRIBUTES.find((a) => a.key === attribute)
-  const attributeData = insights[attribute][window_]
+  const attributeRanking = insights[attribute][window_]
   // Slicing "brew methods" by a single brew method would just collapse the
   // chart to that one row - the slicer only makes sense against the other
   // three attributes.
@@ -123,14 +123,17 @@ export default function Insights() {
           ))}
         </select>
       )}
-      <div className="mb-6 rounded-md border border-gray-200 p-3">
+      <div className="mb-1 rounded-md border border-gray-200 p-3">
         <RankedScoreChart
-          data={attributeData}
+          data={attributeRanking.items}
           labelKey={activeAttribute.labelKey}
           emptyMessage={activeAttribute.emptyMessage}
           ariaLabel={`Average score by ${activeAttribute.label.toLowerCase()}`}
         />
       </div>
+      <p className="mb-6 text-xs text-gray-500">
+        {attributeRanking.items.length > 0 ? attributeRanking.significance.message : ' '}
+      </p>
 
       <h2 className="mb-2 text-sm font-semibold text-gray-900">Most repurchased</h2>
       <RepurchasedList data={mostRepurchased} />

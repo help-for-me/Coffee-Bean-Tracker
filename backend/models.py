@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Generic, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -165,6 +165,7 @@ class ProcessStat(BaseModel):
     process: str
     avg_score: float
     count: int
+    adjusted_score: float
 
 
 class MonthlyStat(BaseModel):
@@ -177,18 +178,41 @@ class OriginCountryStat(BaseModel):
     origin_country: str
     avg_score: float
     count: int
+    adjusted_score: float
 
 
 class TastingNoteStat(BaseModel):
     note: str
     avg_score: float
     count: int
+    adjusted_score: float
 
 
 class BrewStyleStat(BaseModel):
     brew_style: str
     avg_score: float
     count: int
+    adjusted_score: float
+
+
+class SignificanceResult(BaseModel):
+    # Welch's t-test between the top two items in a ranking (see
+    # backend/insights/stats.py) - comparable=False means there wasn't
+    # even enough data to run the test (fewer than 2 groups, or fewer than
+    # 2 ratings on one side); significant=False means the gap between the
+    # top two could plausibly just be noise, not a real preference.
+    comparable: bool
+    p_value: Optional[float]
+    significant: Optional[bool]
+    message: str
+
+
+T = TypeVar("T")
+
+
+class Ranking(BaseModel, Generic[T]):
+    items: list[T]
+    significance: SignificanceResult
 
 
 class RepurchasedItem(BaseModel):
@@ -205,23 +229,23 @@ class RecentWindow(BaseModel):
 
 
 class ByProcess(BaseModel):
-    all_time: list[ProcessStat]
-    recent: list[ProcessStat]
+    all_time: Ranking[ProcessStat]
+    recent: Ranking[ProcessStat]
 
 
 class ByOriginCountry(BaseModel):
-    all_time: list[OriginCountryStat]
-    recent: list[OriginCountryStat]
+    all_time: Ranking[OriginCountryStat]
+    recent: Ranking[OriginCountryStat]
 
 
 class ByTastingNote(BaseModel):
-    all_time: list[TastingNoteStat]
-    recent: list[TastingNoteStat]
+    all_time: Ranking[TastingNoteStat]
+    recent: Ranking[TastingNoteStat]
 
 
 class ByBrewStyle(BaseModel):
-    all_time: list[BrewStyleStat]
-    recent: list[BrewStyleStat]
+    all_time: Ranking[BrewStyleStat]
+    recent: Ranking[BrewStyleStat]
 
 
 class MostRepurchased(BaseModel):
