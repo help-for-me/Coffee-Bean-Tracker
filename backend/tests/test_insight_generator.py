@@ -105,3 +105,22 @@ def test_generate_appends_custom_instructions_to_prompt(monkeypatch):
 
     sent_prompt = generator.client.messages.create.call_args.kwargs["messages"][0]["content"]
     assert "Keep it to one sentence." in sent_prompt
+
+
+# --- statistically rigorous rankings reach the generator (validity fix) ---
+
+
+def test_generate_narrative_passes_adjusted_score_and_significance(conn):
+    crud.create_entry(
+        conn,
+        EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8, process="Washed"),
+    )
+    fake = FakeGenerator(text="summary")
+
+    generate_narrative(conn, "all_time", generator=fake)
+
+    passed_insights, _ = fake.calls[0]
+    process_ranking = passed_insights["by_process"]
+    assert "significance" in process_ranking
+    assert "items" in process_ranking
+    assert "adjusted_score" in process_ranking["items"][0]

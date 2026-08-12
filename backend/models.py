@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Generic, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -8,6 +8,7 @@ CoFermentStatus = Literal["yes", "no", "unknown"]
 BrewStyle = Literal["Pour Over", "Espresso", "French Press", "Cafe-made", "Other"]
 Repurchase = Literal["yes", "no", "maybe"]
 WindowType = Literal["all_time", "recent"]
+EntrySort = Literal["date_desc", "date_asc", "score_desc", "score_asc"]
 
 
 class RatingFields(BaseModel):
@@ -21,6 +22,13 @@ class RatingFields(BaseModel):
 
 
 class EntryCreate(RatingFields):
+    # Overrides RatingFields' required score - logging a bag (especially
+    # via photo) often happens before it's been brewed, so an entry can be
+    # saved with no rating at all and rated later via "Rate a Previous
+    # Bean" or Entry Detail. Once a score IS given, the 0-10 bound still
+    # applies.
+    score: Optional[float] = Field(default=None, ge=0, le=10)
+
     entry_type: EntryType
     # Required for cafe cups (nothing else identifies them) and for bags
     # with no photo. A bag entry with at least one photo and no typed
@@ -164,6 +172,7 @@ class ProcessStat(BaseModel):
     process: str
     avg_score: float
     count: int
+    adjusted_score: float
 
 
 class MonthlyStat(BaseModel):
@@ -176,12 +185,41 @@ class OriginCountryStat(BaseModel):
     origin_country: str
     avg_score: float
     count: int
+    adjusted_score: float
 
 
 class TastingNoteStat(BaseModel):
     note: str
     avg_score: float
     count: int
+    adjusted_score: float
+
+
+class BrewStyleStat(BaseModel):
+    brew_style: str
+    avg_score: float
+    count: int
+    adjusted_score: float
+
+
+class SignificanceResult(BaseModel):
+    # Welch's t-test between the top two items in a ranking (see
+    # backend/insights/stats.py) - comparable=False means there wasn't
+    # even enough data to run the test (fewer than 2 groups, or fewer than
+    # 2 ratings on one side); significant=False means the gap between the
+    # top two could plausibly just be noise, not a real preference.
+    comparable: bool
+    p_value: Optional[float]
+    significant: Optional[bool]
+    message: str
+
+
+T = TypeVar("T")
+
+
+class Ranking(BaseModel, Generic[T]):
+    items: list[T]
+    significance: SignificanceResult
 
 
 class RepurchasedItem(BaseModel):
@@ -198,18 +236,23 @@ class RecentWindow(BaseModel):
 
 
 class ByProcess(BaseModel):
-    all_time: list[ProcessStat]
-    recent: list[ProcessStat]
+    all_time: Ranking[ProcessStat]
+    recent: Ranking[ProcessStat]
 
 
 class ByOriginCountry(BaseModel):
-    all_time: list[OriginCountryStat]
-    recent: list[OriginCountryStat]
+    all_time: Ranking[OriginCountryStat]
+    recent: Ranking[OriginCountryStat]
 
 
 class ByTastingNote(BaseModel):
-    all_time: list[TastingNoteStat]
-    recent: list[TastingNoteStat]
+    all_time: Ranking[TastingNoteStat]
+    recent: Ranking[TastingNoteStat]
+
+
+class ByBrewStyle(BaseModel):
+    all_time: Ranking[BrewStyleStat]
+    recent: Ranking[BrewStyleStat]
 
 
 class MostRepurchased(BaseModel):
@@ -222,6 +265,7 @@ class InsightsOut(BaseModel):
     by_process: ByProcess
     by_origin_country: ByOriginCountry
     by_tasting_note: ByTastingNote
+    by_brew_style: ByBrewStyle
     most_repurchased: MostRepurchased
     recent_window: RecentWindow
 
