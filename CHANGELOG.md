@@ -19,6 +19,14 @@ This project uses [Semantic Versioning](https://semver.org/).
   background refresh never spends an API call on its own.
 
 ### Added
+- New Settings page (`GET`/`PUT /settings`): the Insights "Recent" window
+  (previously `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` env vars only)
+  can now be adjusted from the app itself, and two new plain-English text
+  boxes let you add your own instructions to the AI extraction prompt and
+  the Insights summary prompt (e.g. "always exclude bilingual packaging
+  text", "keep it to one sentence") without waiting on a code change -
+  added as an extra section alongside the built-in prompt rules, not a
+  replacement for them.
 - Richer browsing: History now has entry-type and sort (newest/oldest/
   highest/lowest score) controls. Insights' three separate "Favourite
   tasting notes/origin countries/processes" charts became one chart

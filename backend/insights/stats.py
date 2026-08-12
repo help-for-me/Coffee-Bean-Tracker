@@ -9,6 +9,8 @@ from typing import Optional
 
 from scipy.stats import ttest_ind
 
+from .. import crud
+
 # Bag labels list tasting notes with different delimiters depending on the
 # roaster (comma-separated, or dash-separated like "Peach - Tropical
 # Fruits") - split on either, but not on a hyphen embedded in a word (e.g.
@@ -326,8 +328,8 @@ def get_insights(conn: sqlite3.Connection, today: Optional[date] = None, brew_st
 
     # DB-backed override (1.4.0 settings UI) takes priority over the env
     # var, which stays as the pre-settings-UI default.
-    months = int(os.environ.get("RECENT_WINDOW_MONTHS", 4))
-    count = int(os.environ.get("RECENT_WINDOW_COUNT", 10))
+    months = int(crud.get_setting(conn, "recent_window_months") or os.environ.get("RECENT_WINDOW_MONTHS", 4))
+    count = int(crud.get_setting(conn, "recent_window_count") or os.environ.get("RECENT_WINDOW_COUNT", 10))
 
     rating_dates = [
         datetime.fromisoformat(row["date_entered"]).date()

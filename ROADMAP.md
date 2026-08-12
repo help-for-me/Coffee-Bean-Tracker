@@ -473,7 +473,7 @@ Ollama endpoint/infrastructure decision first (self-host where, which
 model) and can't be meaningfully validated without a live Ollama server
 to run the head-to-head test this section itself calls for.
 
-### 1.4.0 - Settings UI
+### 1.4.0 - Settings UI - built, awaiting review (2026-08-05)
 Low priority. Takes over `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` from
 env vars, using the `settings` table already present in the schema.
 
@@ -485,6 +485,20 @@ env vars, using the `settings` table already present in the schema.
   into the underlying prompt template. Replaces having to wait on a code
   change (like 0.7.0's known-issues list, or the post-launch narrative-
   length fix) for this kind of adjustment.
+
+Built on branch `claude/1.4.0-settings-ui`, opened as a draft PR left
+unmerged per the milestone workflow. New `GET`/`PUT /settings` endpoints
+back a Settings page (5th tab) covering both bullets above:
+`recent_window_months`/`recent_window_count` now check the `settings`
+table before falling back to the env var, and an "Extraction
+instructions"/"Insights summary instructions" text box each get appended
+as a distinct, clearly-labelled section onto the end of the existing
+extraction/narrative prompt - a plain-English addition, never a rewrite
+of the built-in prompt rules, so a bad instruction can only add a new
+rule rather than silently override one of the field-boundary rules
+already in place. Full backend test suite passing; both settings and the
+custom-instruction fields verified against a live server and a real
+browser, including persistence across a page reload.
 
 ### 1.5.0 - Multi-user/auth
 Low priority. Uses the `users` table and nullable `user_id` columns already

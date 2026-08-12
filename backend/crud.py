@@ -507,6 +507,23 @@ def get_counts(conn: sqlite3.Connection) -> dict:
     }
 
 
+# --- 1.4.0: settings UI ---
+
+
+def get_setting(conn: sqlite3.Connection, key: str) -> Optional[str]:
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    with conn:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+
+
 # --- 1.1.0: data backup sinks ---
 
 EXPORT_COLUMNS = [

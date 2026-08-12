@@ -275,3 +275,17 @@ class InsightNarrativeOut(BaseModel):
     window_type: WindowType
     summary_text: str
     generated_at: datetime
+
+
+class SettingsOut(BaseModel):
+    recent_window_months: int
+    recent_window_count: int
+    extraction_custom_instructions: str
+    narrative_custom_instructions: str
+
+
+class SettingsUpdate(BaseModel):
+    recent_window_months: Optional[int] = Field(default=None, ge=1)
+    recent_window_count: Optional[int] = Field(default=None, ge=1)
+    extraction_custom_instructions: Optional[str] = Field(default=None, max_length=2000)
+    narrative_custom_instructions: Optional[str] = Field(default=None, max_length=2000)

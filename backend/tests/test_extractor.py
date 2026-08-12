@@ -48,6 +48,46 @@ def test_factory_claude_requires_api_key(monkeypatch):
         get_extractor()
 
 
+# --- 1.4.0: plain-language prompt editing ---
+
+
+def test_factory_passes_custom_instructions_from_settings(monkeypatch, conn):
+    from backend import crud
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    crud.set_setting(conn, "extraction_custom_instructions", "Always exclude bilingual packaging text.")
+
+    extractor = get_extractor(conn)
+    assert extractor.extra_instructions == "Always exclude bilingual packaging text."
+
+
+def test_factory_no_conn_means_no_custom_instructions(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    extractor = get_extractor()
+    assert extractor.extra_instructions is None
+
+
+def test_extract_appends_custom_instructions_to_prompt(monkeypatch):
+    import json
+    from unittest.mock import MagicMock
+
+    from backend.extractor.claude_extractor import ClaudeExtractor, EXTRACTION_PROMPT
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    extractor = ClaudeExtractor(extra_instructions="Always exclude bilingual packaging text.")
+    extractor.client = MagicMock()
+    extractor.client.messages.create.return_value = SimpleNamespace(
+        content=[block("text", json.dumps({"origin_country": "Colombia"}))]
+    )
+
+    extractor.extract([b"fake-image-bytes"])
+
+    sent_content = extractor.client.messages.create.call_args.kwargs["messages"][0]["content"]
+    prompt_text = sent_content[-1]["text"]
+    assert prompt_text.startswith(EXTRACTION_PROMPT)
+    assert "Always exclude bilingual packaging text." in prompt_text
+
+
 def test_response_text_single_text_block():
     assert _response_text([block("text", '{"origin_country": "Colombia"}')]) == '{"origin_country": "Colombia"}'
 

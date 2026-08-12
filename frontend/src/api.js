@@ -94,6 +94,14 @@ export function deleteRating(entryId, ratingId) {
   return request(`/entries/${entryId}/ratings/${ratingId}`, { method: 'DELETE' })
 }
 
+export function getSettings() {
+  return request('/settings')
+}
+
+export function updateSettings(data) {
+  return request('/settings', { method: 'PUT', body: JSON.stringify(data) })
+}
+
 async function downloadFile(path, options = {}) {
   const response = await fetch(`${BASE_URL}${API_PREFIX}${path}`, options)
   if (!response.ok) {

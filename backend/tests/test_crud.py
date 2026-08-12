@@ -387,6 +387,24 @@ def test_save_narrative_twice_returns_most_recent_on_get(conn):
     assert fetched["summary_text"] == "Second summary"
 
 
+# --- 1.4.0: settings UI ---
+
+
+def test_get_setting_returns_none_when_unset(conn):
+    assert crud.get_setting(conn, "recent_window_months") is None
+
+
+def test_set_setting_then_get_returns_it(conn):
+    crud.set_setting(conn, "recent_window_months", "6")
+    assert crud.get_setting(conn, "recent_window_months") == "6"
+
+
+def test_set_setting_twice_overwrites(conn):
+    crud.set_setting(conn, "recent_window_months", "6")
+    crud.set_setting(conn, "recent_window_months", "8")
+    assert crud.get_setting(conn, "recent_window_months") == "8"
+
+
 # --- 1.1.0: data backup sinks ---
 
 
