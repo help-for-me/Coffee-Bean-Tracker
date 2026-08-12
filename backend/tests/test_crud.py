@@ -256,6 +256,54 @@ def test_list_entries_respects_limit(conn):
     assert len(results) == 2
 
 
+# --- 1.2.0: History filter/sort ---
+
+
+def test_list_entries_filters_by_entry_type(conn):
+    crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    )
+    crud.create_entry(
+        conn, EntryCreate(entry_type="cafe_cup", cafe_name="Local Cafe", roaster="Local Cafe", bean_name="House Blend", score=7)
+    )
+    results = crud.list_entries(conn, entry_type="cafe_cup")
+    assert len(results) == 1
+    assert results[0]["entry_type"] == "cafe_cup"
+
+
+def test_list_entries_sort_date_asc(conn):
+    first_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    )
+    second_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="Intelligentsia", bean_name="Black Cat", score=7)
+    )
+    results = crud.list_entries(conn, sort="date_asc")
+    assert [r["id"] for r in results] == [first_id, second_id]
+
+
+def test_list_entries_sort_score_desc_puts_unrated_last(conn):
+    low_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="A", bean_name="A", score=5)
+    )
+    high_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="B", bean_name="B", score=9)
+    )
+    results = crud.list_entries(conn, sort="score_desc")
+    assert [r["id"] for r in results] == [high_id, low_id]
+
+
+def test_list_entries_sort_score_asc(conn):
+    low_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="A", bean_name="A", score=5)
+    )
+    high_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="B", bean_name="B", score=9)
+    )
+    results = crud.list_entries(conn, sort="score_asc")
+    assert [r["id"] for r in results] == [low_id, high_id]
+
+
 def test_create_entry_stores_roast_location(conn):
     data = EntryCreate(
         entry_type="bag", roaster="Pallet Coffee", bean_name="Elkin Guzman", score=7,
@@ -337,3 +385,73 @@ def test_save_narrative_twice_returns_most_recent_on_get(conn):
     fetched = crud.get_latest_narrative(conn, "all_time")
     assert fetched["id"] == second["id"]
     assert fetched["summary_text"] == "Second summary"
+
+
+# --- 1.4.0: settings UI ---
+
+
+def test_get_setting_returns_none_when_unset(conn):
+    assert crud.get_setting(conn, "recent_window_months") is None
+
+
+def test_set_setting_then_get_returns_it(conn):
+    crud.set_setting(conn, "recent_window_months", "6")
+    assert crud.get_setting(conn, "recent_window_months") == "6"
+
+
+def test_set_setting_twice_overwrites(conn):
+    crud.set_setting(conn, "recent_window_months", "6")
+    crud.set_setting(conn, "recent_window_months", "8")
+    assert crud.get_setting(conn, "recent_window_months") == "8"
+
+
+# --- 1.1.0: data backup sinks ---
+
+
+def test_get_export_rows_empty_database(conn):
+    assert crud.get_export_rows(conn) == []
+
+
+def test_get_export_rows_one_row_per_rating(conn):
+    entry_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="X", bean_name="Y", score=7)
+    )
+    crud.add_rating(conn, entry_id, RatingCreate(score=8))
+
+    rows = crud.get_export_rows(conn)
+
+    assert len(rows) == 2
+    assert {r["score"] for r in rows} == {7, 8}
+    assert all(r["roaster"] == "X" and r["bean_name"] == "Y" for r in rows)
+
+
+def test_get_export_rows_includes_bag_detail_fields(conn):
+    crud.create_entry(
+        conn,
+        EntryCreate(entry_type="bag", roaster="X", bean_name="Y", score=7, origin_country="Colombia", process="Washed"),
+    )
+    row = crud.get_export_rows(conn)[0]
+    assert row["origin_country"] == "Colombia"
+    assert row["process"] == "Washed"
+
+
+def test_get_last_export_returns_none_when_never_logged(conn):
+    assert crud.get_last_export(conn, "github") is None
+
+
+def test_log_export_then_get_last_export(conn):
+    crud.log_export(conn, "github", "success")
+    last = crud.get_last_export(conn, "github")
+    assert last["status"] == "success"
+    assert last["sink"] == "github"
+
+
+def test_get_last_export_returns_most_recent(conn):
+    crud.log_export(conn, "github", "failed")
+    crud.log_export(conn, "github", "success")
+    assert crud.get_last_export(conn, "github")["status"] == "success"
+
+
+def test_get_last_export_scoped_by_sink(conn):
+    crud.log_export(conn, "local_xlsx", "success")
+    assert crud.get_last_export(conn, "github") is None

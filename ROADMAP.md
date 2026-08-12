@@ -401,7 +401,7 @@ happens.
 
 Manual full-system test closes 1.0.x once both `1.0.1` and `1.0.2` report back clean.
 
-### 1.1.0 - Data backup sinks
+### 1.1.0 - Data backup sinks - built, awaiting review (2026-08-05)
 Gives the Export tab (scaffolded since 0.1.0, empty ever since - flagged
 as an unscheduled gap and given a real home here) an actual implementation:
 
@@ -412,7 +412,14 @@ as an unscheduled gap and given a real home here) an actual implementation:
 All three use the `export_log` table already present in the schema since
 0.1.0. Human-readable reports, not a re-import source (see 1.7.0).
 
-### 1.2.0 - Richer browsing
+Built on branch `claude/1.1.0-data-backup-sinks`, opened as a draft PR
+that is being left unmerged on purpose - per the new milestone workflow,
+1.x.x branches get built ahead of the still-pending 1.0.1/1.0.2 manual
+tests but wait for a look-over before joining `main`. Full backend test
+suite passing; CSV/XLSX download and the local-save/GitHub-backup toggles
+were also exercised against a live server, not just unit tests.
+
+### 1.2.0 - Richer browsing - built, awaiting review (2026-08-05)
 History filter/sort controls, Insights attribute-switcher dropdown (beyond
 the fixed `process`/origin/tasting-note grouping from 0.4.0) - including
 `brew_style` (Pour Over/Espresso/French Press/Cafe-made/Other, already on
@@ -426,18 +433,34 @@ dimension.
   note/origin/process), not just one more flat ranked dimension like
   0.4.0's breakdowns. Worth designing together with the attribute
   switcher rather than bolting on separately.
-- **Statistical rigor for the "favourite X" rankings**, flagged as a real
-  gap in 0.4.0's output: a single average score with no sense of spread
-  or sample size is misleading once real data has outliers - e.g. a
-  tasting note that appears once at a 9 currently outranks one that
-  appears ten times averaging 8.5. Options to weigh here: showing a
-  min-max range or standard deviation alongside the average (cheapest,
-  most honest - let the reader judge confidence themselves), or ranking
-  by a lower-confidence-bound score (e.g. mean minus one standard error,
-  or a proper Wilson/Bayesian-average style adjustment) so thin-sample
-  outliers don't visually dominate the top of the chart. Needs a real
-  decision, not just "add error bars" - the two approaches produce
-  different rankings, not just different visuals.
+- **Statistical rigor for the "favourite X" rankings** - built 2026-08-05,
+  once the decision this section originally flagged as needing the user's
+  input was actually made: rank by an empirical-Bayes-shrunk score (each
+  item's average pulled toward the overall mean, in proportion to how few
+  ratings back it - a note rated once at a 9 no longer outranks one rated
+  ten times averaging 8.5, the literal example this gap was named for),
+  plus a real significance check (Welch's t-test between the top two
+  items) that says so plainly when the gap could just be noise, or when
+  there isn't even enough data to test it. New `scipy` dependency for the
+  test itself - not hand-rolled, given the point is to be verifiably
+  correct. The AI-generated Insights summary (0.9.0) was also updated to
+  use this instead of raw averages, and to say outright when no dimension
+  shows a statistically real preference, rather than manufacturing a
+  confident-sounding claim from too little data.
+
+Built on branch `claude/1.2.0-richer-browsing`, opened as a draft PR left
+unmerged per the milestone workflow. History gained entry-type and
+newest/oldest/highest/lowest-score filters; Insights' three fixed
+"Favourite X" charts became one chart behind a dropdown (tasting notes/
+origin/process/brew method), plus a second "when brewed as ___" dropdown
+that slices whichever attribute is showing by brew method
+(`GET /insights?brew_style=...`, applied to the process/origin/tasting-
+note breakdowns - not to the brew-method breakdown itself, which is the
+dimension being sliced by), and each ranked chart now shows a
+significance line underneath it. Full backend test suite passing,
+including the exact "single 9 vs. ten ratings averaging 8.5" scenario as
+a real test case; all of it also verified against a live server and a
+real browser.
 
 ### 1.3.0 - Ollama provider
 Low priority. `BeanExtractor` was designed swappable from 0.2.0 onward
@@ -450,7 +473,7 @@ Ollama endpoint/infrastructure decision first (self-host where, which
 model) and can't be meaningfully validated without a live Ollama server
 to run the head-to-head test this section itself calls for.
 
-### 1.4.0 - Settings UI
+### 1.4.0 - Settings UI - built, awaiting review (2026-08-05)
 Low priority. Takes over `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` from
 env vars, using the `settings` table already present in the schema.
 
@@ -462,6 +485,20 @@ env vars, using the `settings` table already present in the schema.
   into the underlying prompt template. Replaces having to wait on a code
   change (like 0.7.0's known-issues list, or the post-launch narrative-
   length fix) for this kind of adjustment.
+
+Built on branch `claude/1.4.0-settings-ui`, opened as a draft PR left
+unmerged per the milestone workflow. New `GET`/`PUT /settings` endpoints
+back a Settings page (5th tab) covering both bullets above:
+`recent_window_months`/`recent_window_count` now check the `settings`
+table before falling back to the env var, and an "Extraction
+instructions"/"Insights summary instructions" text box each get appended
+as a distinct, clearly-labelled section onto the end of the existing
+extraction/narrative prompt - a plain-English addition, never a rewrite
+of the built-in prompt rules, so a bad instruction can only add a new
+rule rather than silently override one of the field-boundary rules
+already in place. Full backend test suite passing; both settings and the
+custom-instruction fields verified against a live server and a real
+browser, including persistence across a page reload.
 
 ### 1.5.0 - Multi-user/auth
 Low priority. Uses the `users` table and nullable `user_id` columns already
@@ -495,13 +532,38 @@ day-to-day phone use against the real deployment.
 personal (colours, typography, style direction) - there's no objectively
 correct implementation to build ahead of the user's own taste.
 
-### 1.7.0 - Data export/import
+### 1.7.0 - Data export/import - built, awaiting review (2026-08-05)
 JSON round-trip backup, for restoring or moving to a new install - not
 CSV/XLSX. An entry can have several ratings, and that one-to-many
 relationship doesn't flatten into rows and columns without ambiguity -
 JSON keeps the structure exact so a restore is reliable. CSV (MVP) and
 XLSX (1.1.0) stay as human-readable reports for opening in a spreadsheet,
 not as a re-import source.
+
+Built on branch `claude/1.7.0-data-export-import`, opened as a draft PR
+left unmerged per the milestone workflow. `GET /data/export` dumps every
+row of every user-data table (bean profiles, entries, farms, ratings,
+photo records, cached AI narratives, settings) exactly as stored, tagged
+with a `format_version` for future schema changes; `POST /data/import`
+requires an explicit `confirm: true` alongside the data (separate from
+the file content itself, so re-uploading a previously-downloaded export
+unmodified can't trigger a restore by accident) and then wipes and
+replaces every one of those tables in a single transaction, so a restore
+either fully succeeds or leaves existing data untouched - never a partial
+mix of old and new. Column names from the uploaded JSON are checked
+against a fixed per-table allowlist before being used to build the
+`INSERT` statement, closing off SQL injection via a crafted backup file.
+Original row IDs are preserved through the round trip. Photo files
+themselves aren't included (only the `entry_photos` rows pointing at
+them) - carrying the `photos/` folder along separately when moving to a
+new install is called out in the UI. Export page (still the pre-1.1.0
+placeholder here, since that milestone lives on its own unmerged branch)
+gained a download button and a file-picker restore flow with a
+confirmation dialog before anything destructive happens. Full backend
+test suite passing, including the SQL-injection and partial-write-safety
+cases; the download/restore round trip was also verified against a live
+server and a real browser, including via a file actually saved to and
+re-uploaded from disk.
 
 ### 1.8.0 - Insights: roaster view, note trends, map, nudge
 Four items moved out of "AI-suggested features" below on 2026-08-05 once

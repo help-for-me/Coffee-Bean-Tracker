@@ -9,7 +9,7 @@ from .. import crud, database
 from ..enrichment import run_enrichment_lookup
 from ..extraction import run_extraction
 from ..image_utils import sniff_image_type
-from ..models import EntryCreate, EntryOut, EntrySummary, EntryUpdate, RatingCreate, RatingUpdate
+from ..models import EntryCreate, EntryOut, EntrySort, EntrySummary, EntryType, EntryUpdate, RatingCreate, RatingUpdate
 from ..photos import save_photo
 from ..rate_limit import enforce_cooldown
 
@@ -108,10 +108,15 @@ async def create_entry(
 
 
 @router.get("", response_model=list[EntrySummary])
-def list_entries(q: Optional[str] = None, limit: Optional[int] = None):
+def list_entries(
+    q: Optional[str] = None,
+    limit: Optional[int] = None,
+    entry_type: Optional[EntryType] = None,
+    sort: EntrySort = "date_desc",
+):
     conn = database.get_connection()
     try:
-        return crud.list_entries(conn, query=q, limit=limit)
+        return crud.list_entries(conn, query=q, limit=limit, entry_type=entry_type, sort=sort)
     finally:
         conn.close()
 

@@ -32,10 +32,12 @@ export function createEntry(data, photos = []) {
   return request('/entries', { method: 'POST', body: formData, headers: {} })
 }
 
-export function listEntries({ q, limit } = {}) {
+export function listEntries({ q, limit, entryType, sort } = {}) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)
   if (limit) params.set('limit', limit)
+  if (entryType) params.set('entry_type', entryType)
+  if (sort) params.set('sort', sort)
   const qs = params.toString()
   return request(`/entries${qs ? `?${qs}` : ''}`)
 }
@@ -51,8 +53,11 @@ export function addRating(entryId, data) {
   })
 }
 
-export function getInsights() {
-  return request('/insights')
+export function getInsights(brewStyle) {
+  const params = new URLSearchParams()
+  if (brewStyle) params.set('brew_style', brewStyle)
+  const qs = params.toString()
+  return request(`/insights${qs ? `?${qs}` : ''}`)
 }
 
 export function getNarrative(window_) {
@@ -101,4 +106,70 @@ export function reprocessEnrichment(beanProfileId, context) {
     method: 'POST',
     body: JSON.stringify({ context: context || null }),
   })
+}
+
+export async function downloadDataExport() {
+  const response = await fetch(`${BASE_URL}${API_PREFIX}/data/export`)
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.detail ?? `Request failed: ${response.status}`)
+  }
+  const blob = await response.blob()
+  const match = (response.headers.get('Content-Disposition') ?? '').match(/filename="?([^"]+)"?/)
+  const filename = match ? match[1] : 'coffee-bean-tracker-backup.json'
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+export function importDataExport(data) {
+  return request('/data/import', { method: 'POST', body: JSON.stringify({ confirm: true, data }) })
+}
+
+export function getSettings() {
+  return request('/settings')
+}
+
+export function updateSettings(data) {
+  return request('/settings', { method: 'PUT', body: JSON.stringify(data) })
+}
+
+async function downloadFile(path, options = {}) {
+  const response = await fetch(`${BASE_URL}${API_PREFIX}${path}`, options)
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.detail ?? `Request failed: ${response.status}`)
+  }
+  const blob = await response.blob()
+  const match = (response.headers.get('Content-Disposition') ?? '').match(/filename="?([^"]+)"?/)
+  const filename = match ? match[1] : 'export'
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+export function downloadCsv() {
+  return downloadFile('/exports/csv')
+}
+
+export function downloadXlsx() {
+  return downloadFile('/exports/xlsx', { method: 'POST' })
+}
+
+export function getExportStatus() {
+  return request('/exports/status')
+}
+
+export function backupToGithub() {
+  return request('/exports/github', { method: 'POST' })
 }

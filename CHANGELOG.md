@@ -19,6 +19,47 @@ This project uses [Semantic Versioning](https://semver.org/).
   background refresh never spends an API call on its own.
 
 ### Added
+- Full data backup and restore (`GET`/`POST /data/export`/`import`): the
+  Export page can now download a JSON file with everything in the app -
+  every bean profile, entry, rating, and photo record - for restoring or
+  moving to a new install, and restore from a previously-downloaded file.
+  Restoring replaces all existing data and requires an explicit
+  confirmation, both via the API and a confirmation dialog in the UI,
+  since it can't be undone.
+- New Settings page (`GET`/`PUT /settings`): the Insights "Recent" window
+  (previously `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` env vars only)
+  can now be adjusted from the app itself, and two new plain-English text
+  boxes let you add your own instructions to the AI extraction prompt and
+  the Insights summary prompt (e.g. "always exclude bilingual packaging
+  text", "keep it to one sentence") without waiting on a code change -
+  added as an extra section alongside the built-in prompt rules, not a
+  replacement for them.
+- Richer browsing: History now has entry-type and sort (newest/oldest/
+  highest/lowest score) controls. Insights' three separate "Favourite
+  tasting notes/origin countries/processes" charts became one chart
+  behind a dropdown, with a new "Brew methods" option alongside them
+  (`brew_style` was already collected per rating, unused for insights
+  until now) - plus a second dropdown to slice whichever attribute is
+  showing down to a single brew method (e.g. "favourite tasting notes
+  when brewed as Espresso").
+- Statistically rigorous "favourite X" rankings: a tasting note rated
+  once at a 9 no longer outranks one rated ten times averaging 8.5 -
+  rankings now use a sample-size-aware adjusted score instead of the raw
+  average, and each ranked chart shows whether the gap between the top
+  two is an actual statistically significant difference or could just be
+  noise (including saying plainly when there isn't enough data to tell
+  either way). The AI-generated Insights summary now uses the same
+  adjusted rankings and significance checks, so it states outright when
+  no dimension shows a real preference yet instead of overclaiming from a
+  thin sample.
+- Data backup sinks on the Export tab: a CSV download (always available,
+  nothing saved on the server), an XLSX download with Raw Data and
+  Summary sheets (optionally also saved to a local file when
+  `LOCAL_XLSX_ENABLED` is set), and an optional GitHub backup button that
+  pushes the same XLSX report to a separate private repo via a personal
+  access token (`GITHUB_BACKUP_ENABLED`, `GITHUB_TOKEN`, `GITHUB_REPO`).
+  Every local-save and GitHub attempt is logged, and the Export page shows
+  when each sink last ran and whether it succeeded.
 - New Entry no longer requires a score to save - a bag can be logged (by
   photo or typed identity) with no rating yet and rated later from "Rate
   a Previous Bean" or Entry Detail, for whenever you haven't tried it yet
