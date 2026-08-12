@@ -93,3 +93,38 @@ export function updateRating(entryId, ratingId, data) {
 export function deleteRating(entryId, ratingId) {
   return request(`/entries/${entryId}/ratings/${ratingId}`, { method: 'DELETE' })
 }
+
+async function downloadFile(path, options = {}) {
+  const response = await fetch(`${BASE_URL}${API_PREFIX}${path}`, options)
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.detail ?? `Request failed: ${response.status}`)
+  }
+  const blob = await response.blob()
+  const match = (response.headers.get('Content-Disposition') ?? '').match(/filename="?([^"]+)"?/)
+  const filename = match ? match[1] : 'export'
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+export function downloadCsv() {
+  return downloadFile('/exports/csv')
+}
+
+export function downloadXlsx() {
+  return downloadFile('/exports/xlsx', { method: 'POST' })
+}
+
+export function getExportStatus() {
+  return request('/exports/status')
+}
+
+export function backupToGithub() {
+  return request('/exports/github', { method: 'POST' })
+}

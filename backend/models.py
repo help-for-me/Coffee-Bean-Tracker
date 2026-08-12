@@ -22,6 +22,13 @@ class RatingFields(BaseModel):
 
 
 class EntryCreate(RatingFields):
+    # Overrides RatingFields' required score - logging a bag (especially
+    # via photo) often happens before it's been brewed, so an entry can be
+    # saved with no rating at all and rated later via "Rate a Previous
+    # Bean" or Entry Detail. Once a score IS given, the 0-10 bound still
+    # applies.
+    score: Optional[float] = Field(default=None, ge=0, le=10)
+
     entry_type: EntryType
     # Required for cafe cups (nothing else identifies them) and for bags
     # with no photo. A bag entry with at least one photo and no typed

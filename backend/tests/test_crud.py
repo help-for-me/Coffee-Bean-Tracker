@@ -177,6 +177,21 @@ def test_create_entry_creates_profile_entry_and_rating(conn):
     assert rating_count == 1
 
 
+def test_create_entry_without_score_creates_no_rating(conn):
+    # "Log it now, rate later" - saving a bag (e.g. from its photo, before
+    # it's been brewed) must not force a rating at the same time.
+    data = EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=None)
+    entry_id = crud.create_entry(conn, data)
+
+    rating_count = conn.execute(
+        "SELECT COUNT(*) AS n FROM ratings WHERE entry_id = ?", (entry_id,)
+    ).fetchone()["n"]
+    assert rating_count == 0
+
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["ratings"] == []
+
+
 def test_create_entry_reuses_existing_profile(conn):
     crud.resolve_bean_profile(conn, "Stumptown", "Hair Bender")
     data = EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=7)
@@ -370,3 +385,55 @@ def test_save_narrative_twice_returns_most_recent_on_get(conn):
     fetched = crud.get_latest_narrative(conn, "all_time")
     assert fetched["id"] == second["id"]
     assert fetched["summary_text"] == "Second summary"
+
+
+# --- 1.1.0: data backup sinks ---
+
+
+def test_get_export_rows_empty_database(conn):
+    assert crud.get_export_rows(conn) == []
+
+
+def test_get_export_rows_one_row_per_rating(conn):
+    entry_id = crud.create_entry(
+        conn, EntryCreate(entry_type="bag", roaster="X", bean_name="Y", score=7)
+    )
+    crud.add_rating(conn, entry_id, RatingCreate(score=8))
+
+    rows = crud.get_export_rows(conn)
+
+    assert len(rows) == 2
+    assert {r["score"] for r in rows} == {7, 8}
+    assert all(r["roaster"] == "X" and r["bean_name"] == "Y" for r in rows)
+
+
+def test_get_export_rows_includes_bag_detail_fields(conn):
+    crud.create_entry(
+        conn,
+        EntryCreate(entry_type="bag", roaster="X", bean_name="Y", score=7, origin_country="Colombia", process="Washed"),
+    )
+    row = crud.get_export_rows(conn)[0]
+    assert row["origin_country"] == "Colombia"
+    assert row["process"] == "Washed"
+
+
+def test_get_last_export_returns_none_when_never_logged(conn):
+    assert crud.get_last_export(conn, "github") is None
+
+
+def test_log_export_then_get_last_export(conn):
+    crud.log_export(conn, "github", "success")
+    last = crud.get_last_export(conn, "github")
+    assert last["status"] == "success"
+    assert last["sink"] == "github"
+
+
+def test_get_last_export_returns_most_recent(conn):
+    crud.log_export(conn, "github", "failed")
+    crud.log_export(conn, "github", "success")
+    assert crud.get_last_export(conn, "github")["status"] == "success"
+
+
+def test_get_last_export_scoped_by_sink(conn):
+    crud.log_export(conn, "local_xlsx", "success")
+    assert crud.get_last_export(conn, "github") is None
