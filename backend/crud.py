@@ -706,12 +706,19 @@ _EXPORT_FORMAT_VERSION = 1
 # rather than trusted.
 _EXPORT_TABLES: dict[str, set[str]] = {
     "bean_profiles": {"id", "roaster", "bean_name", "is_provisional", "created_at"},
+    # Must come right after bean_profiles - it references bean_profiles(id),
+    # so on restore it needs to be cleared before bean_profiles (reversed
+    # delete order) and inserted after it (forward insert order).
+    "bean_profile_enrichment": {
+        "bean_profile_id", "status", "candidates", "source_url", "source_path",
+        "extra_context", "checked_at", "updated_at",
+    },
     "entries": {
         "id", "bean_profile_id", "user_id", "entry_type", "cafe_name", "entry_date", "date_entered",
         "price_paid", "currency", "extraction_status", "extraction_source", "origin_country", "region",
         "farm_producer", "altitude_m", "variety", "process", "co_ferment_status", "co_ferment_ingredient",
         "certifications", "roast_level", "printed_tasting_notes", "roast_date", "bag_weight_g",
-        "batch_number", "roast_location", "updated_at",
+        "batch_number", "roast_location", "website_description", "updated_at",
     },
     "entry_farms": {"id", "entry_id", "farm_name", "location"},
     "entry_photos": {"id", "entry_id", "photo_path", "upload_order", "date_entered"},
