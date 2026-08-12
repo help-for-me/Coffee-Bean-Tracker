@@ -23,12 +23,22 @@ def _sample_row(**overrides):
     return row
 
 
+_NO_SIGNIFICANCE = {"comparable": False, "p_value": None, "significant": None, "message": "No data yet."}
+_EMPTY_RANKING = {"items": [], "significance": _NO_SIGNIFICANCE}
+
+
 def _sample_insights():
     return {
         "monthly_trend": [{"month": "2026-08", "avg_score": 8.0, "count": 1}],
-        "by_process": {"all_time": [{"process": "Washed", "avg_score": 8.0, "count": 1}], "recent": []},
-        "by_origin_country": {"all_time": [], "recent": []},
-        "by_tasting_note": {"all_time": [], "recent": []},
+        "by_process": {
+            "all_time": {
+                "items": [{"process": "Washed", "avg_score": 8.0, "adjusted_score": 8.0, "count": 1}],
+                "significance": _NO_SIGNIFICANCE,
+            },
+            "recent": _EMPTY_RANKING,
+        },
+        "by_origin_country": {"all_time": _EMPTY_RANKING, "recent": _EMPTY_RANKING},
+        "by_tasting_note": {"all_time": _EMPTY_RANKING, "recent": _EMPTY_RANKING},
         "most_repurchased": {"all_time": [], "recent": []},
     }
 
@@ -89,9 +99,9 @@ def test_build_xlsx_summary_includes_process_table():
 def test_build_xlsx_empty_database_still_produces_valid_workbook():
     empty_insights = {
         "monthly_trend": [],
-        "by_process": {"all_time": [], "recent": []},
-        "by_origin_country": {"all_time": [], "recent": []},
-        "by_tasting_note": {"all_time": [], "recent": []},
+        "by_process": {"all_time": _EMPTY_RANKING, "recent": _EMPTY_RANKING},
+        "by_origin_country": {"all_time": _EMPTY_RANKING, "recent": _EMPTY_RANKING},
+        "by_tasting_note": {"all_time": _EMPTY_RANKING, "recent": _EMPTY_RANKING},
         "most_repurchased": {"all_time": [], "recent": []},
     }
     content = build_xlsx([], empty_insights)

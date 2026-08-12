@@ -321,8 +321,24 @@ def _insert_rating(conn: sqlite3.Connection, entry_id: int, data: RatingCreate) 
     return cursor.lastrowid
 
 
+# Maps the frontend's sort choice to an ORDER BY clause. Score sorts put
+# unrated entries (latest_score IS NULL) last regardless of direction -
+# "highest score first" and "lowest score first" both mean "actually rated
+# entries first," an unrated entry isn't a 0.
+_ENTRY_SORT_CLAUSES = {
+    "date_desc": "e.date_entered DESC, e.id DESC",
+    "date_asc": "e.date_entered ASC, e.id ASC",
+    "score_desc": "latest_score IS NULL, latest_score DESC, e.date_entered DESC",
+    "score_asc": "latest_score IS NULL, latest_score ASC, e.date_entered DESC",
+}
+
+
 def list_entries(
-    conn: sqlite3.Connection, query: Optional[str] = None, limit: Optional[int] = None
+    conn: sqlite3.Connection,
+    query: Optional[str] = None,
+    limit: Optional[int] = None,
+    entry_type: Optional[str] = None,
+    sort: str = "date_desc",
 ) -> list[dict]:
     sql = """
         SELECT e.id, bp.roaster, bp.bean_name, bp.is_provisional, e.entry_type, e.entry_date, e.date_entered,
@@ -331,12 +347,18 @@ def list_entries(
         FROM entries e
         JOIN bean_profiles bp ON bp.id = e.bean_profile_id
     """
+    conditions = []
     params: list = []
     if query:
         pattern = f"%{query.strip()}%"
-        sql += " WHERE bp.roaster LIKE ? OR bp.bean_name LIKE ? OR e.cafe_name LIKE ?"
+        conditions.append("(bp.roaster LIKE ? OR bp.bean_name LIKE ? OR e.cafe_name LIKE ?)")
         params += [pattern, pattern, pattern]
-    sql += " ORDER BY e.date_entered DESC, e.id DESC"
+    if entry_type:
+        conditions.append("e.entry_type = ?")
+        params.append(entry_type)
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += f" ORDER BY {_ENTRY_SORT_CLAUSES.get(sort, _ENTRY_SORT_CLAUSES['date_desc'])}"
     if limit:
         sql += " LIMIT ?"
         params.append(limit)

@@ -419,7 +419,7 @@ tests but wait for a look-over before joining `main`. Full backend test
 suite passing; CSV/XLSX download and the local-save/GitHub-backup toggles
 were also exercised against a live server, not just unit tests.
 
-### 1.2.0 - Richer browsing
+### 1.2.0 - Richer browsing - built, awaiting review (2026-08-05)
 History filter/sort controls, Insights attribute-switcher dropdown (beyond
 the fixed `process`/origin/tasting-note grouping from 0.4.0) - including
 `brew_style` (Pour Over/Espresso/French Press/Cafe-made/Other, already on
@@ -433,18 +433,34 @@ dimension.
   note/origin/process), not just one more flat ranked dimension like
   0.4.0's breakdowns. Worth designing together with the attribute
   switcher rather than bolting on separately.
-- **Statistical rigor for the "favourite X" rankings**, flagged as a real
-  gap in 0.4.0's output: a single average score with no sense of spread
-  or sample size is misleading once real data has outliers - e.g. a
-  tasting note that appears once at a 9 currently outranks one that
-  appears ten times averaging 8.5. Options to weigh here: showing a
-  min-max range or standard deviation alongside the average (cheapest,
-  most honest - let the reader judge confidence themselves), or ranking
-  by a lower-confidence-bound score (e.g. mean minus one standard error,
-  or a proper Wilson/Bayesian-average style adjustment) so thin-sample
-  outliers don't visually dominate the top of the chart. Needs a real
-  decision, not just "add error bars" - the two approaches produce
-  different rankings, not just different visuals.
+- **Statistical rigor for the "favourite X" rankings** - built 2026-08-05,
+  once the decision this section originally flagged as needing the user's
+  input was actually made: rank by an empirical-Bayes-shrunk score (each
+  item's average pulled toward the overall mean, in proportion to how few
+  ratings back it - a note rated once at a 9 no longer outranks one rated
+  ten times averaging 8.5, the literal example this gap was named for),
+  plus a real significance check (Welch's t-test between the top two
+  items) that says so plainly when the gap could just be noise, or when
+  there isn't even enough data to test it. New `scipy` dependency for the
+  test itself - not hand-rolled, given the point is to be verifiably
+  correct. The AI-generated Insights summary (0.9.0) was also updated to
+  use this instead of raw averages, and to say outright when no dimension
+  shows a statistically real preference, rather than manufacturing a
+  confident-sounding claim from too little data.
+
+Built on branch `claude/1.2.0-richer-browsing`, opened as a draft PR left
+unmerged per the milestone workflow. History gained entry-type and
+newest/oldest/highest/lowest-score filters; Insights' three fixed
+"Favourite X" charts became one chart behind a dropdown (tasting notes/
+origin/process/brew method), plus a second "when brewed as ___" dropdown
+that slices whichever attribute is showing by brew method
+(`GET /insights?brew_style=...`, applied to the process/origin/tasting-
+note breakdowns - not to the brew-method breakdown itself, which is the
+dimension being sliced by), and each ranked chart now shows a
+significance line underneath it. Full backend test suite passing,
+including the exact "single 9 vs. ten ratings averaging 8.5" scenario as
+a real test case; all of it also verified against a live server and a
+real browser.
 
 ### 1.3.0 - Ollama provider
 Low priority. `BeanExtractor` was designed swappable from 0.2.0 onward

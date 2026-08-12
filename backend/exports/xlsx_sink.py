@@ -60,18 +60,27 @@ def _write_summary(sheet, insights: dict) -> None:
     )
     write_table(
         "Favourite processes",
-        ["Process", "Avg score", "Count"],
-        [(r["process"], r["avg_score"], r["count"]) for r in insights["by_process"]["all_time"]],
+        ["Process", "Avg score", "Adjusted score", "Count"],
+        [
+            (r["process"], r["avg_score"], r["adjusted_score"], r["count"])
+            for r in insights["by_process"]["all_time"]["items"]
+        ],
     )
     write_table(
         "Favourite origin countries",
-        ["Origin country", "Avg score", "Count"],
-        [(r["origin_country"], r["avg_score"], r["count"]) for r in insights["by_origin_country"]["all_time"]],
+        ["Origin country", "Avg score", "Adjusted score", "Count"],
+        [
+            (r["origin_country"], r["avg_score"], r["adjusted_score"], r["count"])
+            for r in insights["by_origin_country"]["all_time"]["items"]
+        ],
     )
     write_table(
         "Favourite tasting notes",
-        ["Note", "Avg score", "Count"],
-        [(r["note"], r["avg_score"], r["count"]) for r in insights["by_tasting_note"]["all_time"]],
+        ["Note", "Avg score", "Adjusted score", "Count"],
+        [
+            (r["note"], r["avg_score"], r["adjusted_score"], r["count"])
+            for r in insights["by_tasting_note"]["all_time"]["items"]
+        ],
     )
     write_table(
         "Most repurchased",

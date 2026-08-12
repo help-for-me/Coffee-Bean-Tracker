@@ -19,6 +19,24 @@ This project uses [Semantic Versioning](https://semver.org/).
   background refresh never spends an API call on its own.
 
 ### Added
+- Richer browsing: History now has entry-type and sort (newest/oldest/
+  highest/lowest score) controls. Insights' three separate "Favourite
+  tasting notes/origin countries/processes" charts became one chart
+  behind a dropdown, with a new "Brew methods" option alongside them
+  (`brew_style` was already collected per rating, unused for insights
+  until now) - plus a second dropdown to slice whichever attribute is
+  showing down to a single brew method (e.g. "favourite tasting notes
+  when brewed as Espresso").
+- Statistically rigorous "favourite X" rankings: a tasting note rated
+  once at a 9 no longer outranks one rated ten times averaging 8.5 -
+  rankings now use a sample-size-aware adjusted score instead of the raw
+  average, and each ranked chart shows whether the gap between the top
+  two is an actual statistically significant difference or could just be
+  noise (including saying plainly when there isn't enough data to tell
+  either way). The AI-generated Insights summary now uses the same
+  adjusted rankings and significance checks, so it states outright when
+  no dimension shows a real preference yet instead of overclaiming from a
+  thin sample.
 - Data backup sinks on the Export tab: a CSV download (always available,
   nothing saved on the server), an XLSX download with Raw Data and
   Summary sheets (optionally also saved to a local file when
