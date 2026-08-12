@@ -188,7 +188,10 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool =
             ),
         )
         entry_id = cursor.lastrowid
-        _insert_rating(conn, entry_id, data)
+        # No score means "log it now, rate later" - an entry can exist
+        # with zero ratings until one's added via add_rating.
+        if data.score is not None:
+            _insert_rating(conn, entry_id, data)
     return entry_id
 
 
@@ -319,8 +322,24 @@ def _insert_rating(conn: sqlite3.Connection, entry_id: int, data: RatingCreate) 
     return cursor.lastrowid
 
 
+# Maps the frontend's sort choice to an ORDER BY clause. Score sorts put
+# unrated entries (latest_score IS NULL) last regardless of direction -
+# "highest score first" and "lowest score first" both mean "actually rated
+# entries first," an unrated entry isn't a 0.
+_ENTRY_SORT_CLAUSES = {
+    "date_desc": "e.date_entered DESC, e.id DESC",
+    "date_asc": "e.date_entered ASC, e.id ASC",
+    "score_desc": "latest_score IS NULL, latest_score DESC, e.date_entered DESC",
+    "score_asc": "latest_score IS NULL, latest_score ASC, e.date_entered DESC",
+}
+
+
 def list_entries(
-    conn: sqlite3.Connection, query: Optional[str] = None, limit: Optional[int] = None
+    conn: sqlite3.Connection,
+    query: Optional[str] = None,
+    limit: Optional[int] = None,
+    entry_type: Optional[str] = None,
+    sort: str = "date_desc",
 ) -> list[dict]:
     sql = """
         SELECT e.id, bp.roaster, bp.bean_name, bp.is_provisional, e.entry_type, e.entry_date, e.date_entered,
@@ -329,12 +348,18 @@ def list_entries(
         FROM entries e
         JOIN bean_profiles bp ON bp.id = e.bean_profile_id
     """
+    conditions = []
     params: list = []
     if query:
         pattern = f"%{query.strip()}%"
-        sql += " WHERE bp.roaster LIKE ? OR bp.bean_name LIKE ? OR e.cafe_name LIKE ?"
+        conditions.append("(bp.roaster LIKE ? OR bp.bean_name LIKE ? OR e.cafe_name LIKE ?)")
         params += [pattern, pattern, pattern]
-    sql += " ORDER BY e.date_entered DESC, e.id DESC"
+    if entry_type:
+        conditions.append("e.entry_type = ?")
+        params.append(entry_type)
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += f" ORDER BY {_ENTRY_SORT_CLAUSES.get(sort, _ENTRY_SORT_CLAUSES['date_desc'])}"
     if limit:
         sql += " LIMIT ?"
         params.append(limit)
@@ -566,3 +591,73 @@ def import_full_export(conn: sqlite3.Connection, data: dict) -> dict:
                     [row[column] for column in columns],
                 )
     return get_counts(conn)
+
+
+# --- 1.4.0: settings UI ---
+
+
+def get_setting(conn: sqlite3.Connection, key: str) -> Optional[str]:
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    with conn:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+
+
+# --- 1.1.0: data backup sinks ---
+
+EXPORT_COLUMNS = [
+    "entry_id", "rating_id", "roaster", "bean_name", "is_provisional", "entry_type", "cafe_name",
+    "entry_date", "rating_date", "score", "narrative_notes", "acidity_score", "body_score",
+    "sweetness_score", "brew_style", "repurchase", "origin_country", "region", "farm_producer",
+    "altitude_m", "variety", "process", "co_ferment_status", "co_ferment_ingredient",
+    "certifications", "roast_level", "printed_tasting_notes", "roast_date", "bag_weight_g",
+    "batch_number", "roast_location", "price_paid", "currency",
+]
+
+
+def get_export_rows(conn: sqlite3.Connection) -> list[dict]:
+    # One row per rating (not per entry) - an entry re-rated later produces
+    # two rows sharing the same bag details, which is the natural
+    # "one row per tasting event" shape for a spreadsheet report. This is
+    # a report for opening in a spreadsheet, not a re-import source (see
+    # 1.7.0's JSON export for that) - the entry/rating split doesn't need
+    # to round-trip losslessly here.
+    rows = conn.execute(
+        """
+        SELECT
+            e.id AS entry_id, r.id AS rating_id,
+            bp.roaster, bp.bean_name, bp.is_provisional,
+            e.entry_type, e.cafe_name, e.entry_date,
+            r.date_entered AS rating_date, r.score, r.narrative_notes,
+            r.acidity_score, r.body_score, r.sweetness_score, r.brew_style, r.repurchase,
+            e.origin_country, e.region, e.farm_producer, e.altitude_m, e.variety, e.process,
+            e.co_ferment_status, e.co_ferment_ingredient, e.certifications, e.roast_level,
+            e.printed_tasting_notes, e.roast_date, e.bag_weight_g, e.batch_number,
+            e.roast_location, e.price_paid, e.currency
+        FROM ratings r
+        JOIN entries e ON e.id = r.entry_id
+        JOIN bean_profiles bp ON bp.id = e.bean_profile_id
+        ORDER BY r.date_entered
+        """
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def log_export(conn: sqlite3.Connection, sink: str, status: str) -> None:
+    with conn:
+        conn.execute("INSERT INTO export_log (sink, status) VALUES (?, ?)", (sink, status))
+
+
+def get_last_export(conn: sqlite3.Connection, sink: str) -> Optional[dict]:
+    row = conn.execute(
+        "SELECT sink, exported_at, status FROM export_log WHERE sink = ? ORDER BY exported_at DESC, id DESC LIMIT 1",
+        (sink,),
+    ).fetchone()
+    return dict(row) if row else None
