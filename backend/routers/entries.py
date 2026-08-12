@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Reque
 from pydantic import ValidationError
 
 from .. import crud, database
+from ..enrichment import run_enrichment_lookup
 from ..extraction import run_extraction
 from ..image_utils import sniff_image_type
 from ..models import EntryCreate, EntryOut, EntrySort, EntrySummary, EntryType, EntryUpdate, RatingCreate, RatingUpdate
@@ -91,6 +92,16 @@ async def create_entry(
             "Entry created: id=%s type=%s identity=%s bean=%r score=%s has_photos=%s",
             entry_id, entry_data.entry_type, identity_source, _bean_label(entry), entry_data.score, bool(photo_paths),
         )
+        # A provisional (photo-only) profile has no real identity yet to
+        # search for - that trigger instead lives in extraction.py, once
+        # extraction resolves one. Re-fetches so the response reflects the
+        # 'pending' row just inserted, rather than the pre-trigger snapshot
+        # (the lookup itself still finishes in the background, after this
+        # response is sent - the client re-fetches the entry to see the
+        # eventual needs_review/confirmed/no_match outcome).
+        if has_identity and crud.maybe_start_enrichment(conn, entry["bean_profile"]["id"]):
+            background_tasks.add_task(run_enrichment_lookup, entry["bean_profile"]["id"])
+            entry = crud.get_entry(conn, entry_id)
         return entry
     finally:
         conn.close()

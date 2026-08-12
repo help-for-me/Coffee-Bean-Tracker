@@ -75,6 +75,18 @@ This project uses [Semantic Versioning](https://semver.org/).
   traceback instead of silently returning an error with nothing recorded
   anywhere. Uvicorn's own request log (method, path, status, client IP)
   now also reaches the file - previously it only went to stdout.
+- Roaster website enrichment (1.9.0): the first time a bean profile gets a
+  real identity, the app searches the roaster's own website in the
+  background for that specific bean and fills in whatever it finds that
+  the label didn't have (fuller origin/farm detail, process, tasting
+  notes, the roaster's own description) - never overwriting anything the
+  label or a manual edit already provided. When the search isn't
+  confident it found the right page, Entry Detail shows up to three
+  candidates to pick from, or a "none of these" option that takes extra
+  context and searches again in the background. A manual "reprocess" is
+  also available any time after. Built on Claude's `web_search`/
+  `web_fetch` server tools via a new `ENRICHMENT_MODEL` setting (default
+  `claude-sonnet-5`, separate from the extraction/narrative model).
 
 ### Fixed
 - All API routes now live under `/api` - previously the API and the

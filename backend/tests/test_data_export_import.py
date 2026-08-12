@@ -18,7 +18,10 @@ def test_get_full_export_empty_database_has_every_table_as_empty_list(conn):
     export = crud.get_full_export(conn)
     assert export["format_version"] == 1
     assert "exported_at" in export
-    for table in ("bean_profiles", "entries", "entry_farms", "entry_photos", "ratings", "insight_narratives", "settings"):
+    for table in (
+        "bean_profiles", "bean_profile_enrichment", "entries", "entry_farms", "entry_photos",
+        "ratings", "insight_narratives", "settings",
+    ):
         assert export[table] == []
 
 
@@ -103,6 +106,30 @@ def test_import_round_trip_preserves_ids_and_content(conn):
     assert entry is not None  # same id still resolves after the round trip
     assert entry["bean_profile"]["roaster"] == "Pallet Coffee"
     assert entry["ratings"][0]["score"] == 9
+
+
+def test_import_round_trip_preserves_enrichment_and_website_description(conn):
+    # Surfaced by merging 1.9.0 (roaster website enrichment) into the
+    # tracking branch alongside 1.7.0 (this export/import feature) - the
+    # bean_profile_enrichment table and entries.website_description column
+    # didn't exist yet when 1.7.0's _EXPORT_TABLES allowlist was written.
+    entry_id = _seed_entry(conn, roaster="Funk Coffee", bean_name="Here Comes the Flood", score=9)
+    bean_profile_id = crud.get_entry(conn, entry_id)["bean_profile"]["id"]
+    crud.update_entry(conn, entry_id, {"website_description": "A juicy, floral Kenyan filter roast."})
+    crud.confirm_enrichment(
+        conn, bean_profile_id, url="https://funkcoffee.ca/x", title="X", source_path=None, fields={}
+    )
+
+    exported = crud.get_full_export(conn)
+    assert len(exported["bean_profile_enrichment"]) == 1
+
+    counts = crud.import_full_export(conn, exported)
+
+    assert counts["entries"] == 1
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["website_description"] == "A juicy, floral Kenyan filter roast."
+    assert entry["bean_profile"]["enrichment"]["status"] == "confirmed"
+    assert entry["bean_profile"]["enrichment"]["source_url"] == "https://funkcoffee.ca/x"
 
 
 def test_import_empty_payload_wipes_all_data(conn):

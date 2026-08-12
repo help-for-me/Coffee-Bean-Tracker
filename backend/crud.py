@@ -1,4 +1,5 @@
 import difflib
+import json
 import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
@@ -40,6 +41,7 @@ _UPDATABLE_ENTRY_FIELDS = {
     "origin_country", "region", "farm_producer", "altitude_m", "variety", "process",
     "co_ferment_status", "co_ferment_ingredient", "certifications", "roast_level",
     "printed_tasting_notes", "roast_date", "bag_weight_g", "batch_number", "roast_location",
+    "website_description",
 }
 
 _UPDATABLE_RATING_FIELDS = {
@@ -110,6 +112,18 @@ def resolve_provisional_profile(conn: sqlite3.Connection, provisional_id: int, r
         (roaster, bean_name, provisional_id),
     )
     return provisional_id
+
+
+def get_bean_profile(conn: sqlite3.Connection, bean_profile_id: int) -> Optional[dict]:
+    row = conn.execute(
+        "SELECT id, roaster, bean_name, is_provisional FROM bean_profiles WHERE id = ?",
+        (bean_profile_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    profile = dict(row)
+    profile["is_provisional"] = bool(profile["is_provisional"])
+    return profile
 
 
 def search_bean_profiles(conn: sqlite3.Connection, query: str, limit: int = 10) -> list[dict]:
@@ -411,6 +425,7 @@ def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
         "roaster": entry.pop("bp_roaster"),
         "bean_name": entry.pop("bp_bean_name"),
         "is_provisional": bool(entry.pop("bp_is_provisional")),
+        "enrichment": get_enrichment(conn, entry["bean_profile_id"]),
     }
     entry["ratings"] = [dict(r) for r in rating_rows]
     entry["farms"] = [dict(f) for f in farm_rows]
@@ -497,6 +512,168 @@ def save_narrative(conn: sqlite3.Connection, window_type: str, summary_text: str
     return dict(row)
 
 
+def maybe_start_enrichment(conn: sqlite3.Connection, bean_profile_id: int) -> bool:
+    # Idempotent trigger check - a bean_profile_enrichment row existing at
+    # all means a lookup was already attempted (regardless of outcome), so
+    # this only fires once per profile unless a manual reprocess resets it
+    # via mark_enrichment_pending. Never fires for a provisional profile
+    # ("Unidentified #N") since there's no real bean name yet to search for.
+    with conn:
+        profile = conn.execute(
+            "SELECT is_provisional FROM bean_profiles WHERE id = ?", (bean_profile_id,)
+        ).fetchone()
+        if profile is None or profile["is_provisional"]:
+            return False
+        existing = conn.execute(
+            "SELECT 1 FROM bean_profile_enrichment WHERE bean_profile_id = ?", (bean_profile_id,)
+        ).fetchone()
+        if existing:
+            return False
+        conn.execute(
+            "INSERT INTO bean_profile_enrichment (bean_profile_id, status) VALUES (?, 'pending')",
+            (bean_profile_id,),
+        )
+    return True
+
+
+def get_enrichment(conn: sqlite3.Connection, bean_profile_id: int) -> Optional[dict]:
+    row = conn.execute(
+        "SELECT status, candidates, source_url, checked_at FROM bean_profile_enrichment WHERE bean_profile_id = ?",
+        (bean_profile_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    enrichment = dict(row)
+    enrichment["candidates"] = json.loads(enrichment["candidates"]) if enrichment["candidates"] else []
+    return enrichment
+
+
+def mark_enrichment_pending(conn: sqlite3.Connection, bean_profile_id: int, extra_context: Optional[str] = None) -> None:
+    # Used both for a plain manual reprocess and for a "none of these"
+    # rejection that supplies a fresh hint - either way the next lookup
+    # starts clean, with no stale candidates left over from the last run.
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, extra_context, candidates, checked_at)
+            VALUES (?, 'pending', ?, NULL, NULL)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'pending', extra_context = excluded.extra_context, candidates = NULL, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id, extra_context),
+        )
+
+
+def save_enrichment_candidates(conn: sqlite3.Connection, bean_profile_id: int, candidates: list[dict]) -> None:
+    # INSERT ... ON CONFLICT rather than a plain UPDATE, same as
+    # mark_enrichment_pending - a caller that skipped maybe_start_enrichment
+    # (or whose earlier INSERT failed) would otherwise have this silently
+    # no-op instead of recording the outcome.
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, candidates, checked_at)
+            VALUES (?, 'needs_review', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'needs_review', candidates = excluded.candidates,
+                checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id, json.dumps(candidates)),
+        )
+
+
+def mark_enrichment_no_match(conn: sqlite3.Connection, bean_profile_id: int) -> None:
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, checked_at)
+            VALUES (?, 'no_match', CURRENT_TIMESTAMP)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'no_match', candidates = NULL, checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id,),
+        )
+
+
+def mark_enrichment_failed(conn: sqlite3.Connection, bean_profile_id: int) -> None:
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, checked_at)
+            VALUES (?, 'failed', CURRENT_TIMESTAMP)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'failed', checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id,),
+        )
+
+
+def confirm_enrichment(
+    conn: sqlite3.Connection, bean_profile_id: int, url: str, title: str, source_path: Optional[str], fields: dict
+) -> None:
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, source_url, source_path, checked_at)
+            VALUES (?, 'confirmed', ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'confirmed', source_url = excluded.source_url, source_path = excluded.source_path,
+                candidates = NULL, checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id, url, source_path),
+        )
+        _apply_enrichment_fields(conn, bean_profile_id, fields)
+
+
+def _apply_enrichment_fields(conn: sqlite3.Connection, bean_profile_id: int, fields: dict) -> None:
+    # Fills gaps the label/photo extraction left blank - never overwrites
+    # data already on the entry, since the printed label is the more
+    # trustworthy source when the two disagree. Applies to every entry
+    # under this profile (a bag bought more than once shares the same
+    # website page), unlike apply_extraction_result which is scoped to the
+    # single entry a photo was attached to.
+    if not fields:
+        return
+    entry_ids = [r["id"] for r in conn.execute("SELECT id FROM entries WHERE bean_profile_id = ?", (bean_profile_id,)).fetchall()]
+    for entry_id in entry_ids:
+        conn.execute(
+            """
+            UPDATE entries SET
+                origin_country = COALESCE(origin_country, ?),
+                region = COALESCE(region, ?),
+                farm_producer = COALESCE(farm_producer, ?),
+                altitude_m = COALESCE(altitude_m, ?),
+                variety = COALESCE(variety, ?),
+                process = COALESCE(process, ?),
+                co_ferment_status = CASE WHEN co_ferment_status = 'unknown' THEN COALESCE(?, co_ferment_status) ELSE co_ferment_status END,
+                co_ferment_ingredient = COALESCE(co_ferment_ingredient, ?),
+                certifications = COALESCE(certifications, ?),
+                roast_level = COALESCE(roast_level, ?),
+                printed_tasting_notes = COALESCE(printed_tasting_notes, ?),
+                roast_location = COALESCE(roast_location, ?),
+                website_description = COALESCE(website_description, ?),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                fields.get("origin_country"),
+                fields.get("region"),
+                fields.get("farm_producer"),
+                fields.get("altitude_m"),
+                fields.get("variety"),
+                fields.get("process"),
+                fields.get("co_ferment_status"),
+                fields.get("co_ferment_ingredient"),
+                fields.get("certifications"),
+                fields.get("roast_level"),
+                fields.get("printed_tasting_notes"),
+                fields.get("roast_location"),
+                fields.get("website_description"),
+                entry_id,
+            ),
+        )
+
+
 def get_counts(conn: sqlite3.Connection) -> dict:
     # Logged on every startup (see main.py) so a container restart's
     # before/after counts can be compared directly from the log file,
@@ -529,12 +706,19 @@ _EXPORT_FORMAT_VERSION = 1
 # rather than trusted.
 _EXPORT_TABLES: dict[str, set[str]] = {
     "bean_profiles": {"id", "roaster", "bean_name", "is_provisional", "created_at"},
+    # Must come right after bean_profiles - it references bean_profiles(id),
+    # so on restore it needs to be cleared before bean_profiles (reversed
+    # delete order) and inserted after it (forward insert order).
+    "bean_profile_enrichment": {
+        "bean_profile_id", "status", "candidates", "source_url", "source_path",
+        "extra_context", "checked_at", "updated_at",
+    },
     "entries": {
         "id", "bean_profile_id", "user_id", "entry_type", "cafe_name", "entry_date", "date_entered",
         "price_paid", "currency", "extraction_status", "extraction_source", "origin_country", "region",
         "farm_producer", "altitude_m", "variety", "process", "co_ferment_status", "co_ferment_ingredient",
         "certifications", "roast_level", "printed_tasting_notes", "roast_date", "bag_weight_g",
-        "batch_number", "roast_location", "updated_at",
+        "batch_number", "roast_location", "website_description", "updated_at",
     },
     "entry_farms": {"id", "entry_id", "farm_name", "location"},
     "entry_photos": {"id", "entry_id", "photo_path", "upload_order", "date_entered"},

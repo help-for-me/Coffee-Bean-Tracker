@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from backend import database, logging_config, photos, rate_limit
+from backend import database, enrichment_sources, logging_config, photos, rate_limit
 from backend.main import app
 
 
@@ -36,6 +36,7 @@ def conn(tmp_path, monkeypatch):
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(database, "DB_PATH", tmp_path / "test.db")
     monkeypatch.setattr(photos, "PHOTOS_PATH", tmp_path / "photos")
+    monkeypatch.setattr(enrichment_sources, "SOURCES_PATH", tmp_path / "enrichment_sources")
     monkeypatch.setattr(logging_config, "LOG_PATH", tmp_path / "logs" / "app.log")
     with TestClient(app) as test_client:
         yield test_client

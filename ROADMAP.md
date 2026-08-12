@@ -588,35 +588,52 @@ data collected - everything they need is already logged.
   suggestions, but this piece doesn't depend on that.
 
 ### 1.9.0 - Roaster website enrichment
-Supersedes MAJOR 2's old "Web-lookup enrichment" stub - formalized here
-2026-08-05 with a real design, agreed to rather than left speculative.
-Extraction today only knows what's printed on the bag/menu; this looks up
-the roaster's own website for the same bean and fills in whatever the
-website has that the label doesn't (fuller origin/farm detail, process
-notes, tasting notes, roaster's own copy) - first pass is the roaster's
-own site specifically, not a general web search.
+Supersedes MAJOR 2's old "Web-lookup enrichment" stub - formalized 2026-08-05
+with a real design, then built 2026-08-11. Extraction only knows what's
+printed on the bag/menu; this looks up the roaster's own website for the
+same bean and fills in whatever the website has that the label doesn't
+(fuller origin/farm detail, process notes, tasting notes, roaster's own
+copy) - the roaster's own site specifically, not a general web search.
+Built via Claude's `web_search`/`web_fetch` server tools (a new
+`ENRICHMENT_MODEL` env var, default `claude-sonnet-5` - separate from the
+haiku default used for extraction/narrative, since this needs a model
+capable of both tools and genuine match-confidence judgment).
 
-- **Trigger: both.** An automatic first-pass lookup the first time a
-  roaster is seen (background job, mirrors the AI photo extraction
-  pattern), plus a manual "reprocess" button available any time after
-  (mirrors 0.7.0's re-extract button).
-- **Source storage: raw HTML**, saved locally alongside the entry/bean
-  profile it informed - picked specifically because it's the cheapest
-  format to both store and reprocess (re-run extraction against a saved
-  page with no new network fetch needed), unlike a PDF snapshot which
-  would need a headless-browser render step to produce and isn't
-  practical to feed back through text extraction later.
-- **Reprocess flow, on manual request:** first surface a short summary of
-  which source(s) the original lookup used and an assessment of whether
-  that source still looks reliable/current for this bean. If it does,
-  reprocess is fast and free of new network calls - re-run extraction
-  against the already-saved HTML. If it doesn't (site restructured,
-  product delisted, content that no longer matches), go back out and
-  search for a better source instead of trusting the stale copy.
-- Not yet decided: exactly how a saved source gets judged "reliable" (an
-  AI judgment call as part of generating that summary is the likely
-  shape, given the same pattern the narrative/extraction prompts already
-  use) - fine to settle at build time, doesn't block scoping this now.
+- **Trigger: both, built as scoped.** An automatic first-pass lookup the
+  first time a bean profile (roaster + bean name, not just the roaster
+  alone - the lookup itself is bean-specific) is seen with a real,
+  resolved identity, plus a manual "reprocess" button on Entry Detail any
+  time after (mirrors 0.7.0's re-extract button).
+- **Match confirmation workflow (added 2026-08-11, on request):** when
+  the lookup isn't confident it found the right product page, it surfaces
+  up to three candidates with a short note on why each might match,
+  rather than guessing. From Entry Detail, picking one confirms it and
+  runs the fetch+extract step; picking "none of these" (or reprocessing
+  from a confirmed/no-match/failed state) reopens a text box for extra
+  context - e.g. "it's their subscription-only label" - which feeds the
+  next search.
+- **Source storage: fetched page text, not raw HTML.** Claude's
+  `web_fetch` tool returns extracted text rather than the page's literal
+  markup, so that's what gets saved locally (one file per bean profile,
+  in `ENRICHMENT_SOURCES_PATH`) - a deviation from the original "raw
+  HTML" plan, but the same cheap-to-reprocess property still holds (no
+  new network fetch needed to re-extract from it).
+- **Reprocess flow: simplified from the original plan.** A manual
+  reprocess always re-runs the full search rather than first judging
+  whether the saved source still looks reliable/current - that
+  reliability-assessment step (an AI judgment call, deferred at design
+  time as "fine to settle at build time") stayed out of this pass to
+  match what was actually asked for; worth revisiting if reprocessing
+  turns out to be used often enough that the extra network round-trip
+  matters.
+- Fields never overwrite label/photo-extracted data, only fill gaps
+  (`origin_country`, `region`, `farm_producer`, `altitude_m`, `variety`,
+  `process`, `co_ferment_status`/`co_ferment_ingredient`,
+  `certifications`, `roast_level`, `printed_tasting_notes`,
+  `roast_location`), applied across every entry sharing the bean profile
+  (a bag bought more than once shares the same website page). One new
+  field: `website_description`, the roaster's own descriptive copy, since
+  that never comes from a printed label.
 
 ### 1.10.0 - Photo thumbnails
 Agreed 2026-08-05. History and Entry Detail's photo galleries currently
