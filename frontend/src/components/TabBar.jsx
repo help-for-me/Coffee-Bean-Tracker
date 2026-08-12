@@ -5,6 +5,7 @@ const TABS = [
   { to: '/history', label: 'History' },
   { to: '/insights', label: 'Insights' },
   { to: '/export', label: 'Export' },
+  { to: '/settings', label: 'Settings' },
 ]
 
 export default function TabBar() {

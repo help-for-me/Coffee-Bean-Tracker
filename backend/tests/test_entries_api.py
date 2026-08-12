@@ -31,6 +31,33 @@ def test_create_entry_rejects_out_of_range_score(client):
     assert response.status_code == 422
 
 
+# --- "log it now, rate later" ---
+
+
+def test_create_entry_without_score_succeeds(client):
+    response = post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender")
+    assert response.status_code == 201
+    body = response.json()
+    assert body["ratings"] == []
+
+
+def test_create_entry_without_score_shows_null_latest_score_in_history(client):
+    post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender")
+    response = client.get("/api/entries")
+    assert response.json()[0]["latest_score"] is None
+
+
+def test_rate_a_previously_unrated_entry(client):
+    create_response = post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender")
+    entry_id = create_response.json()["id"]
+
+    response = client.post(f"/api/entries/{entry_id}/ratings", json={"score": 8})
+    assert response.status_code == 201
+    body = response.json()
+    assert len(body["ratings"]) == 1
+    assert body["ratings"][0]["score"] == 8
+
+
 def test_autocomplete_returns_prefix_matches(client):
     post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
     response = client.get("/api/bean-profiles/autocomplete", params={"q": "Stump"})
@@ -62,6 +89,33 @@ def test_list_entries_search_query(client):
     body = response.json()
     assert len(body) == 1
     assert body[0]["roaster"] == "Intelligentsia"
+
+
+# --- 1.2.0: History filter/sort ---
+
+
+def test_list_entries_filters_by_entry_type(client):
+    post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
+    post_entry(client, entry_type="cafe_cup", cafe_name="Local Cafe", roaster="Local Cafe", bean_name="House Blend", score=7)
+    response = client.get("/api/entries", params={"entry_type": "bag"})
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["entry_type"] == "bag"
+
+
+def test_list_entries_sort_score_desc(client):
+    post_entry(client, entry_type="bag", roaster="A", bean_name="A", score=5)
+    post_entry(client, entry_type="bag", roaster="B", bean_name="B", score=9)
+    response = client.get("/api/entries", params={"sort": "score_desc"})
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["roaster"] for e in body] == ["B", "A"]
+
+
+def test_list_entries_rejects_unknown_sort(client):
+    response = client.get("/api/entries", params={"sort": "not-a-real-sort"})
+    assert response.status_code == 422
 
 
 def test_add_rating_endpoint_appends_rating(client):

@@ -4,6 +4,7 @@ import { deleteEntry, deleteRating, getEntry, photoUrl, reextractEntry, updateEn
 import { beanProfileDisplayName } from '../utils/beanProfileDisplay'
 import Field from '../components/Field'
 import RatingRow from '../components/RatingRow'
+import RoasterMatchCard from '../components/RoasterMatchCard'
 
 const BAG_DETAIL_FIELDS = [
   ['origin_country', 'Origin country'],
@@ -21,6 +22,7 @@ const BAG_DETAIL_FIELDS = [
   ['bag_weight_g', 'Bag weight (g)'],
   ['batch_number', 'Batch number'],
   ['roast_location', 'Roasted in'],
+  ['website_description', "Roaster's description"],
 ]
 
 const BAG_DETAIL_EDIT_FIELDS = [
@@ -38,6 +40,7 @@ const BAG_DETAIL_EDIT_FIELDS = [
   ['bag_weight_g', 'Bag weight (g)', 'number'],
   ['batch_number', 'Batch number', 'text'],
   ['roast_location', 'Roasted in', 'text'],
+  ['website_description', "Roaster's description", 'text'],
 ]
 
 function Value({ value }) {
@@ -193,6 +196,8 @@ export default function EntryDetail() {
           </button>
         )}
       </div>
+
+      <RoasterMatchCard beanProfile={entry.bean_profile} onChanged={loadEntry} />
 
       {entry.photos.length > 0 && (
         <>

@@ -70,3 +70,57 @@ def test_generate_narrative_propagates_generator_errors(conn):
     with pytest.raises(RuntimeError, match="provider unavailable"):
         generate_narrative(conn, "all_time", generator=fake)
     assert crud.get_latest_narrative(conn, "all_time") is None
+
+
+# --- 1.4.0: plain-language prompt editing ---
+
+
+def test_factory_passes_custom_instructions_from_settings(monkeypatch, conn):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    crud.set_setting(conn, "narrative_custom_instructions", "Keep it to one sentence.")
+
+    generator = get_generator(conn)
+    assert generator.extra_instructions == "Keep it to one sentence."
+
+
+def test_factory_no_conn_means_no_custom_instructions(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    generator = get_generator()
+    assert generator.extra_instructions is None
+
+
+def test_generate_appends_custom_instructions_to_prompt(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from backend.insights.claude_generator import ClaudeInsightGenerator, NARRATIVE_PROMPT_TEMPLATE
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key")
+    generator = ClaudeInsightGenerator(extra_instructions="Keep it to one sentence.")
+    generator.client = MagicMock()
+    generator.client.messages.create.return_value = MagicMock(
+        content=[MagicMock(type="text", text="A short summary.")]
+    )
+
+    generator.generate({"monthly_trend": []}, "all_time")
+
+    sent_prompt = generator.client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "Keep it to one sentence." in sent_prompt
+
+
+# --- statistically rigorous rankings reach the generator (validity fix) ---
+
+
+def test_generate_narrative_passes_adjusted_score_and_significance(conn):
+    crud.create_entry(
+        conn,
+        EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8, process="Washed"),
+    )
+    fake = FakeGenerator(text="summary")
+
+    generate_narrative(conn, "all_time", generator=fake)
+
+    passed_insights, _ = fake.calls[0]
+    process_ranking = passed_insights["by_process"]
+    assert "significance" in process_ranking
+    assert "items" in process_ranking
+    assert "adjusted_score" in process_ranking["items"][0]

@@ -58,7 +58,7 @@ export default function NewEntry() {
       setError('Roaster and bean name are required, unless attaching a photo to a bag entry.')
       return
     }
-    if (score === '' || Number(score) < 0 || Number(score) > 10) {
+    if (score !== '' && (Number(score) < 0 || Number(score) > 10)) {
       setError('Score must be between 0 and 10.')
       return
     }
@@ -87,7 +87,7 @@ export default function NewEntry() {
         bag_weight_g: details.bag_weight_g ? Number(details.bag_weight_g) : null,
         batch_number: details.batch_number || null,
         roast_location: details.roast_location || null,
-        score: Number(score),
+        score: score === '' ? null : Number(score),
         narrative_notes: narrativeNotes.trim() || null,
         ...ratingPayloadFromAdvanced(advanced),
       }, photos)
@@ -154,6 +154,7 @@ export default function NewEntry() {
         onScore={(e) => setScore(e.target.value)}
         narrativeNotes={narrativeNotes}
         onNarrativeNotes={(e) => setNarrativeNotes(e.target.value)}
+        scoreOptional
       />
 
       <div className="mb-4">

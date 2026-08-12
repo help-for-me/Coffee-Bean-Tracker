@@ -1,5 +1,7 @@
 import difflib
+import json
 import sqlite3
+from datetime import datetime, timezone
 from typing import Optional
 
 from .models import EntryCreate, RatingCreate
@@ -39,6 +41,7 @@ _UPDATABLE_ENTRY_FIELDS = {
     "origin_country", "region", "farm_producer", "altitude_m", "variety", "process",
     "co_ferment_status", "co_ferment_ingredient", "certifications", "roast_level",
     "printed_tasting_notes", "roast_date", "bag_weight_g", "batch_number", "roast_location",
+    "website_description",
 }
 
 _UPDATABLE_RATING_FIELDS = {
@@ -109,6 +112,18 @@ def resolve_provisional_profile(conn: sqlite3.Connection, provisional_id: int, r
         (roaster, bean_name, provisional_id),
     )
     return provisional_id
+
+
+def get_bean_profile(conn: sqlite3.Connection, bean_profile_id: int) -> Optional[dict]:
+    row = conn.execute(
+        "SELECT id, roaster, bean_name, is_provisional FROM bean_profiles WHERE id = ?",
+        (bean_profile_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    profile = dict(row)
+    profile["is_provisional"] = bool(profile["is_provisional"])
+    return profile
 
 
 def search_bean_profiles(conn: sqlite3.Connection, query: str, limit: int = 10) -> list[dict]:
@@ -187,7 +202,10 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool =
             ),
         )
         entry_id = cursor.lastrowid
-        _insert_rating(conn, entry_id, data)
+        # No score means "log it now, rate later" - an entry can exist
+        # with zero ratings until one's added via add_rating.
+        if data.score is not None:
+            _insert_rating(conn, entry_id, data)
     return entry_id
 
 
@@ -318,8 +336,24 @@ def _insert_rating(conn: sqlite3.Connection, entry_id: int, data: RatingCreate) 
     return cursor.lastrowid
 
 
+# Maps the frontend's sort choice to an ORDER BY clause. Score sorts put
+# unrated entries (latest_score IS NULL) last regardless of direction -
+# "highest score first" and "lowest score first" both mean "actually rated
+# entries first," an unrated entry isn't a 0.
+_ENTRY_SORT_CLAUSES = {
+    "date_desc": "e.date_entered DESC, e.id DESC",
+    "date_asc": "e.date_entered ASC, e.id ASC",
+    "score_desc": "latest_score IS NULL, latest_score DESC, e.date_entered DESC",
+    "score_asc": "latest_score IS NULL, latest_score ASC, e.date_entered DESC",
+}
+
+
 def list_entries(
-    conn: sqlite3.Connection, query: Optional[str] = None, limit: Optional[int] = None
+    conn: sqlite3.Connection,
+    query: Optional[str] = None,
+    limit: Optional[int] = None,
+    entry_type: Optional[str] = None,
+    sort: str = "date_desc",
 ) -> list[dict]:
     sql = """
         SELECT e.id, bp.roaster, bp.bean_name, bp.is_provisional, e.entry_type, e.entry_date, e.date_entered,
@@ -328,12 +362,18 @@ def list_entries(
         FROM entries e
         JOIN bean_profiles bp ON bp.id = e.bean_profile_id
     """
+    conditions = []
     params: list = []
     if query:
         pattern = f"%{query.strip()}%"
-        sql += " WHERE bp.roaster LIKE ? OR bp.bean_name LIKE ? OR e.cafe_name LIKE ?"
+        conditions.append("(bp.roaster LIKE ? OR bp.bean_name LIKE ? OR e.cafe_name LIKE ?)")
         params += [pattern, pattern, pattern]
-    sql += " ORDER BY e.date_entered DESC, e.id DESC"
+    if entry_type:
+        conditions.append("e.entry_type = ?")
+        params.append(entry_type)
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += f" ORDER BY {_ENTRY_SORT_CLAUSES.get(sort, _ENTRY_SORT_CLAUSES['date_desc'])}"
     if limit:
         sql += " LIMIT ?"
         params.append(limit)
@@ -385,6 +425,7 @@ def get_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[dict]:
         "roaster": entry.pop("bp_roaster"),
         "bean_name": entry.pop("bp_bean_name"),
         "is_provisional": bool(entry.pop("bp_is_provisional")),
+        "enrichment": get_enrichment(conn, entry["bean_profile_id"]),
     }
     entry["ratings"] = [dict(r) for r in rating_rows]
     entry["farms"] = [dict(f) for f in farm_rows]
@@ -471,6 +512,168 @@ def save_narrative(conn: sqlite3.Connection, window_type: str, summary_text: str
     return dict(row)
 
 
+def maybe_start_enrichment(conn: sqlite3.Connection, bean_profile_id: int) -> bool:
+    # Idempotent trigger check - a bean_profile_enrichment row existing at
+    # all means a lookup was already attempted (regardless of outcome), so
+    # this only fires once per profile unless a manual reprocess resets it
+    # via mark_enrichment_pending. Never fires for a provisional profile
+    # ("Unidentified #N") since there's no real bean name yet to search for.
+    with conn:
+        profile = conn.execute(
+            "SELECT is_provisional FROM bean_profiles WHERE id = ?", (bean_profile_id,)
+        ).fetchone()
+        if profile is None or profile["is_provisional"]:
+            return False
+        existing = conn.execute(
+            "SELECT 1 FROM bean_profile_enrichment WHERE bean_profile_id = ?", (bean_profile_id,)
+        ).fetchone()
+        if existing:
+            return False
+        conn.execute(
+            "INSERT INTO bean_profile_enrichment (bean_profile_id, status) VALUES (?, 'pending')",
+            (bean_profile_id,),
+        )
+    return True
+
+
+def get_enrichment(conn: sqlite3.Connection, bean_profile_id: int) -> Optional[dict]:
+    row = conn.execute(
+        "SELECT status, candidates, source_url, checked_at FROM bean_profile_enrichment WHERE bean_profile_id = ?",
+        (bean_profile_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    enrichment = dict(row)
+    enrichment["candidates"] = json.loads(enrichment["candidates"]) if enrichment["candidates"] else []
+    return enrichment
+
+
+def mark_enrichment_pending(conn: sqlite3.Connection, bean_profile_id: int, extra_context: Optional[str] = None) -> None:
+    # Used both for a plain manual reprocess and for a "none of these"
+    # rejection that supplies a fresh hint - either way the next lookup
+    # starts clean, with no stale candidates left over from the last run.
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, extra_context, candidates, checked_at)
+            VALUES (?, 'pending', ?, NULL, NULL)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'pending', extra_context = excluded.extra_context, candidates = NULL, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id, extra_context),
+        )
+
+
+def save_enrichment_candidates(conn: sqlite3.Connection, bean_profile_id: int, candidates: list[dict]) -> None:
+    # INSERT ... ON CONFLICT rather than a plain UPDATE, same as
+    # mark_enrichment_pending - a caller that skipped maybe_start_enrichment
+    # (or whose earlier INSERT failed) would otherwise have this silently
+    # no-op instead of recording the outcome.
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, candidates, checked_at)
+            VALUES (?, 'needs_review', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'needs_review', candidates = excluded.candidates,
+                checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id, json.dumps(candidates)),
+        )
+
+
+def mark_enrichment_no_match(conn: sqlite3.Connection, bean_profile_id: int) -> None:
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, checked_at)
+            VALUES (?, 'no_match', CURRENT_TIMESTAMP)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'no_match', candidates = NULL, checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id,),
+        )
+
+
+def mark_enrichment_failed(conn: sqlite3.Connection, bean_profile_id: int) -> None:
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, checked_at)
+            VALUES (?, 'failed', CURRENT_TIMESTAMP)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'failed', checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id,),
+        )
+
+
+def confirm_enrichment(
+    conn: sqlite3.Connection, bean_profile_id: int, url: str, title: str, source_path: Optional[str], fields: dict
+) -> None:
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO bean_profile_enrichment (bean_profile_id, status, source_url, source_path, checked_at)
+            VALUES (?, 'confirmed', ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(bean_profile_id) DO UPDATE SET
+                status = 'confirmed', source_url = excluded.source_url, source_path = excluded.source_path,
+                candidates = NULL, checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            """,
+            (bean_profile_id, url, source_path),
+        )
+        _apply_enrichment_fields(conn, bean_profile_id, fields)
+
+
+def _apply_enrichment_fields(conn: sqlite3.Connection, bean_profile_id: int, fields: dict) -> None:
+    # Fills gaps the label/photo extraction left blank - never overwrites
+    # data already on the entry, since the printed label is the more
+    # trustworthy source when the two disagree. Applies to every entry
+    # under this profile (a bag bought more than once shares the same
+    # website page), unlike apply_extraction_result which is scoped to the
+    # single entry a photo was attached to.
+    if not fields:
+        return
+    entry_ids = [r["id"] for r in conn.execute("SELECT id FROM entries WHERE bean_profile_id = ?", (bean_profile_id,)).fetchall()]
+    for entry_id in entry_ids:
+        conn.execute(
+            """
+            UPDATE entries SET
+                origin_country = COALESCE(origin_country, ?),
+                region = COALESCE(region, ?),
+                farm_producer = COALESCE(farm_producer, ?),
+                altitude_m = COALESCE(altitude_m, ?),
+                variety = COALESCE(variety, ?),
+                process = COALESCE(process, ?),
+                co_ferment_status = CASE WHEN co_ferment_status = 'unknown' THEN COALESCE(?, co_ferment_status) ELSE co_ferment_status END,
+                co_ferment_ingredient = COALESCE(co_ferment_ingredient, ?),
+                certifications = COALESCE(certifications, ?),
+                roast_level = COALESCE(roast_level, ?),
+                printed_tasting_notes = COALESCE(printed_tasting_notes, ?),
+                roast_location = COALESCE(roast_location, ?),
+                website_description = COALESCE(website_description, ?),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                fields.get("origin_country"),
+                fields.get("region"),
+                fields.get("farm_producer"),
+                fields.get("altitude_m"),
+                fields.get("variety"),
+                fields.get("process"),
+                fields.get("co_ferment_status"),
+                fields.get("co_ferment_ingredient"),
+                fields.get("certifications"),
+                fields.get("roast_level"),
+                fields.get("printed_tasting_notes"),
+                fields.get("roast_location"),
+                fields.get("website_description"),
+                entry_id,
+            ),
+        )
+
+
 def get_counts(conn: sqlite3.Connection) -> dict:
     # Logged on every startup (see main.py) so a container restart's
     # before/after counts can be compared directly from the log file,
@@ -480,3 +683,165 @@ def get_counts(conn: sqlite3.Connection) -> dict:
         "ratings": conn.execute("SELECT COUNT(*) AS n FROM ratings").fetchone()["n"],
         "photos": conn.execute("SELECT COUNT(*) AS n FROM entry_photos").fetchone()["n"],
     }
+
+
+# --- 1.7.0: JSON data export/import ---
+#
+# A full round-trip backup for restoring or moving to a new install - not
+# the CSV/XLSX reports (human-readable, one row per rating, lossy for the
+# one-to-many entry->ratings relationship). This dumps every row of every
+# user-data table exactly as stored, and import restores that exact state.
+# Photo files themselves aren't included (they live in the separately
+# mounted photos/ volume, already copied whichever way the rest of the
+# install moves) - only the entry_photos rows that point at them.
+
+_EXPORT_FORMAT_VERSION = 1
+
+# Table order matters twice over: it's the FK-safe insert order on import
+# (a bean_profiles row must exist before an entries row can reference it),
+# and reversed, the FK-safe delete order (an entries row must go before the
+# bean_profiles row it references). Each set is an explicit column
+# allowlist - column names from the uploaded JSON get interpolated into a
+# SQL identifier list on import, so anything not on this list is rejected
+# rather than trusted.
+_EXPORT_TABLES: dict[str, set[str]] = {
+    "bean_profiles": {"id", "roaster", "bean_name", "is_provisional", "created_at"},
+    # Must come right after bean_profiles - it references bean_profiles(id),
+    # so on restore it needs to be cleared before bean_profiles (reversed
+    # delete order) and inserted after it (forward insert order).
+    "bean_profile_enrichment": {
+        "bean_profile_id", "status", "candidates", "source_url", "source_path",
+        "extra_context", "checked_at", "updated_at",
+    },
+    "entries": {
+        "id", "bean_profile_id", "user_id", "entry_type", "cafe_name", "entry_date", "date_entered",
+        "price_paid", "currency", "extraction_status", "extraction_source", "origin_country", "region",
+        "farm_producer", "altitude_m", "variety", "process", "co_ferment_status", "co_ferment_ingredient",
+        "certifications", "roast_level", "printed_tasting_notes", "roast_date", "bag_weight_g",
+        "batch_number", "roast_location", "website_description", "updated_at",
+    },
+    "entry_farms": {"id", "entry_id", "farm_name", "location"},
+    "entry_photos": {"id", "entry_id", "photo_path", "upload_order", "date_entered"},
+    "ratings": {
+        "id", "entry_id", "user_id", "score", "narrative_notes", "acidity_score", "body_score",
+        "sweetness_score", "brew_style", "repurchase", "date_entered", "updated_at",
+    },
+    "insight_narratives": {"id", "window_type", "summary_text", "generated_at"},
+    "settings": {"key", "value"},
+}
+
+
+class ImportValidationError(ValueError):
+    pass
+
+
+def get_full_export(conn: sqlite3.Connection) -> dict:
+    export: dict = {
+        "format_version": _EXPORT_FORMAT_VERSION,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+    }
+    for table in _EXPORT_TABLES:
+        export[table] = [dict(row) for row in conn.execute(f"SELECT * FROM {table}").fetchall()]
+    return export
+
+
+def import_full_export(conn: sqlite3.Connection, data: dict) -> dict:
+    if data.get("format_version") != _EXPORT_FORMAT_VERSION:
+        raise ImportValidationError(f"Unsupported or missing format_version: {data.get('format_version')!r}")
+
+    for table, allowed_columns in _EXPORT_TABLES.items():
+        table_rows = data.get(table, [])
+        if not isinstance(table_rows, list):
+            raise ImportValidationError(f"{table!r} must be a list of rows")
+        for row in table_rows:
+            if not isinstance(row, dict):
+                raise ImportValidationError(f"Malformed row in {table!r}: expected an object")
+            unknown = set(row) - allowed_columns
+            if unknown:
+                raise ImportValidationError(f"Unknown column(s) in {table!r}: {sorted(unknown)}")
+
+    with conn:
+        # Wipes everything first - this is a full restore, not a merge.
+        # Reverse order so a table is always emptied before the table it
+        # references (e.g. entries before bean_profiles).
+        for table in reversed(_EXPORT_TABLES):
+            conn.execute(f"DELETE FROM {table}")
+        for table in _EXPORT_TABLES:
+            for row in data.get(table, []):
+                columns = list(row.keys())
+                placeholders = ", ".join("?" for _ in columns)
+                conn.execute(
+                    f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
+                    [row[column] for column in columns],
+                )
+    return get_counts(conn)
+
+
+# --- 1.4.0: settings UI ---
+
+
+def get_setting(conn: sqlite3.Connection, key: str) -> Optional[str]:
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    with conn:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+
+
+# --- 1.1.0: data backup sinks ---
+
+EXPORT_COLUMNS = [
+    "entry_id", "rating_id", "roaster", "bean_name", "is_provisional", "entry_type", "cafe_name",
+    "entry_date", "rating_date", "score", "narrative_notes", "acidity_score", "body_score",
+    "sweetness_score", "brew_style", "repurchase", "origin_country", "region", "farm_producer",
+    "altitude_m", "variety", "process", "co_ferment_status", "co_ferment_ingredient",
+    "certifications", "roast_level", "printed_tasting_notes", "roast_date", "bag_weight_g",
+    "batch_number", "roast_location", "price_paid", "currency",
+]
+
+
+def get_export_rows(conn: sqlite3.Connection) -> list[dict]:
+    # One row per rating (not per entry) - an entry re-rated later produces
+    # two rows sharing the same bag details, which is the natural
+    # "one row per tasting event" shape for a spreadsheet report. This is
+    # a report for opening in a spreadsheet, not a re-import source (see
+    # 1.7.0's JSON export for that) - the entry/rating split doesn't need
+    # to round-trip losslessly here.
+    rows = conn.execute(
+        """
+        SELECT
+            e.id AS entry_id, r.id AS rating_id,
+            bp.roaster, bp.bean_name, bp.is_provisional,
+            e.entry_type, e.cafe_name, e.entry_date,
+            r.date_entered AS rating_date, r.score, r.narrative_notes,
+            r.acidity_score, r.body_score, r.sweetness_score, r.brew_style, r.repurchase,
+            e.origin_country, e.region, e.farm_producer, e.altitude_m, e.variety, e.process,
+            e.co_ferment_status, e.co_ferment_ingredient, e.certifications, e.roast_level,
+            e.printed_tasting_notes, e.roast_date, e.bag_weight_g, e.batch_number,
+            e.roast_location, e.price_paid, e.currency
+        FROM ratings r
+        JOIN entries e ON e.id = r.entry_id
+        JOIN bean_profiles bp ON bp.id = e.bean_profile_id
+        ORDER BY r.date_entered
+        """
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def log_export(conn: sqlite3.Connection, sink: str, status: str) -> None:
+    with conn:
+        conn.execute("INSERT INTO export_log (sink, status) VALUES (?, ?)", (sink, status))
+
+
+def get_last_export(conn: sqlite3.Connection, sink: str) -> Optional[dict]:
+    row = conn.execute(
+        "SELECT sink, exported_at, status FROM export_log WHERE sink = ? ORDER BY exported_at DESC, id DESC LIMIT 1",
+        (sink,),
+    ).fetchone()
+    return dict(row) if row else None

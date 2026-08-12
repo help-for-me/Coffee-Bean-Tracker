@@ -72,7 +72,9 @@ export default function RatePrevious() {
                   <span className="font-medium text-gray-900">
                     {entry.roaster} — {entry.bean_name}
                   </span>
-                  <span className="text-sm text-purple-700">{entry.latest_score ?? '—'}</span>
+                  <span className="text-sm text-purple-700">
+                    {entry.latest_score ?? <span className="text-xs font-medium text-gray-400">Not yet rated</span>}
+                  </span>
                 </button>
               </li>
             ))}
@@ -94,7 +96,9 @@ export default function RatePrevious() {
       <h1 className="mb-1 text-lg font-semibold text-gray-900">
         {selected.roaster} — {selected.bean_name}
       </h1>
-      <p className="mb-4 text-sm text-gray-500">Rate it again</p>
+      <p className="mb-4 text-sm text-gray-500">
+        {selected.latest_score == null ? 'Rate it' : 'Rate it again'}
+      </p>
 
       <ScoreAndNotesFields
         score={score}

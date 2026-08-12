@@ -9,6 +9,6 @@ from .stats import get_insights, insights_for_window
 
 def generate_narrative(conn: sqlite3.Connection, window_type: str, generator: Optional[InsightGenerator] = None) -> dict:
     windowed_stats = insights_for_window(get_insights(conn), window_type)
-    active_generator = generator or get_generator()
+    active_generator = generator or get_generator(conn)
     summary_text = active_generator.generate(windowed_stats, window_type)
     return crud.save_narrative(conn, window_type, summary_text)

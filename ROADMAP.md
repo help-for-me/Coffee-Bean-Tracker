@@ -7,7 +7,8 @@ Detailed planning for each milestone. For an at-a-glance checklist, see the
 
 Semantic Versioning (`MAJOR.MINOR.PATCH`):
 - **MAJOR** - a fundamentally new phase (0 = building the MVP, 1 = stable,
-  2 = blank slate, 3 = iOS offline-first companion app, 4 = on-device AI/OCR)
+  2 = blank slate, 3 = iOS offline-first companion app, 4 = on-device
+  AI/OCR, 5 = serverless agent-native app, unconfirmed)
 - **MINOR** - new functionality added
 - **PATCH** - bug fixes/stabilization, no new features
 
@@ -400,7 +401,7 @@ happens.
 
 Manual full-system test closes 1.0.x once both `1.0.1` and `1.0.2` report back clean.
 
-### 1.1.0 - Data backup sinks
+### 1.1.0 - Data backup sinks - built, awaiting review (2026-08-05)
 Gives the Export tab (scaffolded since 0.1.0, empty ever since - flagged
 as an unscheduled gap and given a real home here) an actual implementation:
 
@@ -411,7 +412,14 @@ as an unscheduled gap and given a real home here) an actual implementation:
 All three use the `export_log` table already present in the schema since
 0.1.0. Human-readable reports, not a re-import source (see 1.7.0).
 
-### 1.2.0 - Richer browsing
+Built on branch `claude/1.1.0-data-backup-sinks`, opened as a draft PR
+that is being left unmerged on purpose - per the new milestone workflow,
+1.x.x branches get built ahead of the still-pending 1.0.1/1.0.2 manual
+tests but wait for a look-over before joining `main`. Full backend test
+suite passing; CSV/XLSX download and the local-save/GitHub-backup toggles
+were also exercised against a live server, not just unit tests.
+
+### 1.2.0 - Richer browsing - built, awaiting review (2026-08-05)
 History filter/sort controls, Insights attribute-switcher dropdown (beyond
 the fixed `process`/origin/tasting-note grouping from 0.4.0) - including
 `brew_style` (Pour Over/Espresso/French Press/Cafe-made/Other, already on
@@ -425,18 +433,34 @@ dimension.
   note/origin/process), not just one more flat ranked dimension like
   0.4.0's breakdowns. Worth designing together with the attribute
   switcher rather than bolting on separately.
-- **Statistical rigor for the "favourite X" rankings**, flagged as a real
-  gap in 0.4.0's output: a single average score with no sense of spread
-  or sample size is misleading once real data has outliers - e.g. a
-  tasting note that appears once at a 9 currently outranks one that
-  appears ten times averaging 8.5. Options to weigh here: showing a
-  min-max range or standard deviation alongside the average (cheapest,
-  most honest - let the reader judge confidence themselves), or ranking
-  by a lower-confidence-bound score (e.g. mean minus one standard error,
-  or a proper Wilson/Bayesian-average style adjustment) so thin-sample
-  outliers don't visually dominate the top of the chart. Needs a real
-  decision, not just "add error bars" - the two approaches produce
-  different rankings, not just different visuals.
+- **Statistical rigor for the "favourite X" rankings** - built 2026-08-05,
+  once the decision this section originally flagged as needing the user's
+  input was actually made: rank by an empirical-Bayes-shrunk score (each
+  item's average pulled toward the overall mean, in proportion to how few
+  ratings back it - a note rated once at a 9 no longer outranks one rated
+  ten times averaging 8.5, the literal example this gap was named for),
+  plus a real significance check (Welch's t-test between the top two
+  items) that says so plainly when the gap could just be noise, or when
+  there isn't even enough data to test it. New `scipy` dependency for the
+  test itself - not hand-rolled, given the point is to be verifiably
+  correct. The AI-generated Insights summary (0.9.0) was also updated to
+  use this instead of raw averages, and to say outright when no dimension
+  shows a statistically real preference, rather than manufacturing a
+  confident-sounding claim from too little data.
+
+Built on branch `claude/1.2.0-richer-browsing`, opened as a draft PR left
+unmerged per the milestone workflow. History gained entry-type and
+newest/oldest/highest/lowest-score filters; Insights' three fixed
+"Favourite X" charts became one chart behind a dropdown (tasting notes/
+origin/process/brew method), plus a second "when brewed as ___" dropdown
+that slices whichever attribute is showing by brew method
+(`GET /insights?brew_style=...`, applied to the process/origin/tasting-
+note breakdowns - not to the brew-method breakdown itself, which is the
+dimension being sliced by), and each ranked chart now shows a
+significance line underneath it. Full backend test suite passing,
+including the exact "single 9 vs. ten ratings averaging 8.5" scenario as
+a real test case; all of it also verified against a live server and a
+real browser.
 
 ### 1.3.0 - Ollama provider
 Low priority. `BeanExtractor` was designed swappable from 0.2.0 onward
@@ -449,7 +473,7 @@ Ollama endpoint/infrastructure decision first (self-host where, which
 model) and can't be meaningfully validated without a live Ollama server
 to run the head-to-head test this section itself calls for.
 
-### 1.4.0 - Settings UI
+### 1.4.0 - Settings UI - built, awaiting review (2026-08-05)
 Low priority. Takes over `RECENT_WINDOW_MONTHS`/`RECENT_WINDOW_COUNT` from
 env vars, using the `settings` table already present in the schema.
 
@@ -461,6 +485,20 @@ env vars, using the `settings` table already present in the schema.
   into the underlying prompt template. Replaces having to wait on a code
   change (like 0.7.0's known-issues list, or the post-launch narrative-
   length fix) for this kind of adjustment.
+
+Built on branch `claude/1.4.0-settings-ui`, opened as a draft PR left
+unmerged per the milestone workflow. New `GET`/`PUT /settings` endpoints
+back a Settings page (5th tab) covering both bullets above:
+`recent_window_months`/`recent_window_count` now check the `settings`
+table before falling back to the env var, and an "Extraction
+instructions"/"Insights summary instructions" text box each get appended
+as a distinct, clearly-labelled section onto the end of the existing
+extraction/narrative prompt - a plain-English addition, never a rewrite
+of the built-in prompt rules, so a bad instruction can only add a new
+rule rather than silently override one of the field-boundary rules
+already in place. Full backend test suite passing; both settings and the
+custom-instruction fields verified against a live server and a real
+browser, including persistence across a page reload.
 
 ### 1.5.0 - Multi-user/auth
 Low priority. Uses the `users` table and nullable `user_id` columns already
@@ -494,13 +532,145 @@ day-to-day phone use against the real deployment.
 personal (colours, typography, style direction) - there's no objectively
 correct implementation to build ahead of the user's own taste.
 
-### 1.7.0 - Data export/import
+### 1.7.0 - Data export/import - built, awaiting review (2026-08-05)
 JSON round-trip backup, for restoring or moving to a new install - not
 CSV/XLSX. An entry can have several ratings, and that one-to-many
 relationship doesn't flatten into rows and columns without ambiguity -
 JSON keeps the structure exact so a restore is reliable. CSV (MVP) and
 XLSX (1.1.0) stay as human-readable reports for opening in a spreadsheet,
 not as a re-import source.
+
+Built on branch `claude/1.7.0-data-export-import`, opened as a draft PR
+left unmerged per the milestone workflow. `GET /data/export` dumps every
+row of every user-data table (bean profiles, entries, farms, ratings,
+photo records, cached AI narratives, settings) exactly as stored, tagged
+with a `format_version` for future schema changes; `POST /data/import`
+requires an explicit `confirm: true` alongside the data (separate from
+the file content itself, so re-uploading a previously-downloaded export
+unmodified can't trigger a restore by accident) and then wipes and
+replaces every one of those tables in a single transaction, so a restore
+either fully succeeds or leaves existing data untouched - never a partial
+mix of old and new. Column names from the uploaded JSON are checked
+against a fixed per-table allowlist before being used to build the
+`INSERT` statement, closing off SQL injection via a crafted backup file.
+Original row IDs are preserved through the round trip. Photo files
+themselves aren't included (only the `entry_photos` rows pointing at
+them) - carrying the `photos/` folder along separately when moving to a
+new install is called out in the UI. Export page (still the pre-1.1.0
+placeholder here, since that milestone lives on its own unmerged branch)
+gained a download button and a file-picker restore flow with a
+confirmation dialog before anything destructive happens. Full backend
+test suite passing, including the SQL-injection and partial-write-safety
+cases; the download/restore round trip was also verified against a live
+server and a real browser, including via a file actually saved to and
+re-uploaded from disk.
+
+### 1.8.0 - Insights: roaster view, note trends, map, nudge
+Four items moved out of "AI-suggested features" below on 2026-08-05 once
+agreed to. All four are additions to the existing Insights page, no new
+data collected - everything they need is already logged.
+
+- **Roaster-level leaderboard.** Every existing Insights ranking groups by
+  bean; grouping by roaster instead (average across everything from a
+  given roaster) answers a different, also-useful question - "which
+  roasters do I trust," not just "which specific bag." Natural fit
+  alongside 1.2.0's attribute switcher, once that's merged.
+- **Tasting-note trends over time.** The favourite-notes ranking (0.4.0)
+  is a snapshot; a month-by-month view of which notes show up and how
+  they score would show a palate shifting over time, not just where it
+  currently stands.
+- **Origin map view.** A simple world map shading the countries logged so
+  far (by count or average score) - Insights' rankings are all lists;
+  this would be the one visual/spatial view.
+- **"Try something new" nudge.** If recent entries cluster heavily on 1-2
+  roasters, a gentle suggestion to branch out - based purely on your own
+  logged patterns here; 1.9.0 below could eventually feed it richer
+  suggestions, but this piece doesn't depend on that.
+
+### 1.9.0 - Roaster website enrichment
+Supersedes MAJOR 2's old "Web-lookup enrichment" stub - formalized 2026-08-05
+with a real design, then built 2026-08-11. Extraction only knows what's
+printed on the bag/menu; this looks up the roaster's own website for the
+same bean and fills in whatever the website has that the label doesn't
+(fuller origin/farm detail, process notes, tasting notes, roaster's own
+copy) - the roaster's own site specifically, not a general web search.
+Built via Claude's `web_search`/`web_fetch` server tools (a new
+`ENRICHMENT_MODEL` env var, default `claude-sonnet-5` - separate from the
+haiku default used for extraction/narrative, since this needs a model
+capable of both tools and genuine match-confidence judgment).
+
+- **Trigger: both, built as scoped.** An automatic first-pass lookup the
+  first time a bean profile (roaster + bean name, not just the roaster
+  alone - the lookup itself is bean-specific) is seen with a real,
+  resolved identity, plus a manual "reprocess" button on Entry Detail any
+  time after (mirrors 0.7.0's re-extract button).
+- **Match confirmation workflow (added 2026-08-11, on request):** when
+  the lookup isn't confident it found the right product page, it surfaces
+  up to three candidates with a short note on why each might match,
+  rather than guessing. From Entry Detail, picking one confirms it and
+  runs the fetch+extract step; picking "none of these" (or reprocessing
+  from a confirmed/no-match/failed state) reopens a text box for extra
+  context - e.g. "it's their subscription-only label" - which feeds the
+  next search.
+- **Source storage: fetched page text, not raw HTML.** Claude's
+  `web_fetch` tool returns extracted text rather than the page's literal
+  markup, so that's what gets saved locally (one file per bean profile,
+  in `ENRICHMENT_SOURCES_PATH`) - a deviation from the original "raw
+  HTML" plan, but the same cheap-to-reprocess property still holds (no
+  new network fetch needed to re-extract from it).
+- **Reprocess flow: simplified from the original plan.** A manual
+  reprocess always re-runs the full search rather than first judging
+  whether the saved source still looks reliable/current - that
+  reliability-assessment step (an AI judgment call, deferred at design
+  time as "fine to settle at build time") stayed out of this pass to
+  match what was actually asked for; worth revisiting if reprocessing
+  turns out to be used often enough that the extra network round-trip
+  matters.
+- Fields never overwrite label/photo-extracted data, only fill gaps
+  (`origin_country`, `region`, `farm_producer`, `altitude_m`, `variety`,
+  `process`, `co_ferment_status`/`co_ferment_ingredient`,
+  `certifications`, `roast_level`, `printed_tasting_notes`,
+  `roast_location`), applied across every entry sharing the bean profile
+  (a bag bought more than once shares the same website page). One new
+  field: `website_description`, the roaster's own descriptive copy, since
+  that never comes from a printed label.
+
+### 1.10.0 - Photo thumbnails
+Agreed 2026-08-05. History and Entry Detail's photo galleries currently
+serve full-resolution phone photos (often several MB each) for
+thumbnail-sized previews - wasted bandwidth and a slower page over LAN
+Wi-Fi, worse the more photos an entry or a bean profile has. Generate a
+small resized copy (~200px) alongside the original at upload time and
+serve that for every list/grid view; only load the full-size original
+when a photo is actually opened.
+
+---
+
+## AI-suggested features
+
+Ideas Claude has floated unprompted, not requested by the user. **None of
+these get built without explicit agreement first** - this list exists so a
+good idea doesn't get lost, not as an approved backlog. Move an item out of
+this section (into a real MINOR/MAJOR slot, or MAJOR 2's candidate list
+below) once it's actually been agreed to; drop it entirely if it turns out
+not to be wanted. Sits here, between MAJOR 1 and MAJOR 2, because that's
+exactly what it is: a parking lot for ideas that haven't yet been sorted
+into either a firm, numbered commitment (MAJOR 1) or the looser
+candidate list below (MAJOR 2) - not a phase of its own.
+
+- **Freshness flag on entries.** `roast_date` is already captured for most
+  bags - flag or visually mark entries past a typical peak-freshness
+  window (roughly 2-8 weeks post-roast depending on process) on History/
+  Entry Detail, so a stale bag doesn't get blamed on the bean itself.
+- **Cost-per-cup / value ranking.** `price_paid` and `bag_weight_g` are
+  already captured - a "best value" ranking (score relative to $/100g or
+  estimated $/cup) alongside the existing "best score" rankings in
+  Insights, for the days budget matters as much as flavour.
+- **Proactive repeat-purchase surfacing.** 0.8.0's fuzzy matching already
+  merges a re-typed identity into the right profile after the fact - this
+  would surface it *before* saving ("You've had this before, rated it
+  8.5 on 2026-06-01") right in the New Entry form, using the same fuzzy
+  match while typing rather than only on submit.
 
 ---
 
@@ -518,9 +688,6 @@ specific sub-version:
   this only makes *installing* it nicer.
 - Unraid Community Applications feed listing (public template submission)
 - Proxmox VE Helper-Scripts install script (community submission)
-- Web-lookup enrichment: describe a bean by text or photo, app searches
-  the internet to fill in the gaps - explicitly the lowest priority idea
-  on this whole list
 - Human-readable photo filenames: currently `{entry_id}_{yyyymmdd}_{upload_order}.jpg`
   (e.g. `2_20260803_1.jpg`), meaningless without cross-referencing the
   database. Include the roaster/bean name or some other identifiable key
@@ -541,45 +708,6 @@ specific sub-version:
   UI text and the wording instruction sent to the AI for generated
   content (e.g. the Insights summary), not extracted bag text, which is
   always copied verbatim from the label regardless of this setting.
-
----
-
-## AI-suggested features
-
-Ideas Claude has floated unprompted, not requested by the user. **None of
-these get built without explicit agreement first** - this list exists so a
-good idea doesn't get lost, not as an approved backlog. Move an item out of
-this section (into a real MINOR/MAJOR slot, or MAJOR 2's candidate list)
-once it's actually been agreed to; drop it entirely if it turns out not to
-be wanted.
-
-- **Freshness flag on entries.** `roast_date` is already captured for most
-  bags - flag or visually mark entries past a typical peak-freshness
-  window (roughly 2-8 weeks post-roast depending on process) on History/
-  Entry Detail, so a stale bag doesn't get blamed on the bean itself.
-- **Cost-per-cup / value ranking.** `price_paid` and `bag_weight_g` are
-  already captured - a "best value" ranking (score relative to $/100g or
-  estimated $/cup) alongside the existing "best score" rankings in
-  Insights, for the days budget matters as much as flavour.
-- **Roaster-level leaderboard.** Every existing Insights ranking groups by
-  bean; grouping by roaster instead (average across everything from a
-  given roaster) answers a different, also-useful question - "which
-  roasters do I trust," not just "which specific bag."
-- **Proactive repeat-purchase surfacing.** 0.8.0's fuzzy matching already
-  merges a re-typed identity into the right profile after the fact - this
-  would surface it *before* saving ("You've had this before, rated it
-  8.5 on 2026-06-01") right in the New Entry form, using the same fuzzy
-  match while typing rather than only on submit.
-- **Tasting-note trends over time.** The favourite-notes ranking (0.4.0)
-  is a snapshot; a month-by-month view of which notes show up and how
-  they score would show a palate shifting over time, not just where it
-  currently stands.
-- **Origin map view.** A simple world map shading the countries logged so
-  far (by count or average score) - Insights' rankings are all lists;
-  this would be the one visual/spatial view.
-- **"Try something new" nudge.** If recent entries cluster heavily on 1-2
-  roasters, a gentle suggestion to branch out - low-effort, ties into
-  MAJOR 2's already-listed web-lookup enrichment idea if that ever lands.
 
 ---
 
@@ -608,3 +736,20 @@ directly on the device (e.g. Apple's Vision/on-device model frameworks)
 instead of round-tripping to Claude's API - most relevant for the
 "phone can't currently reach the server or the internet" case that 3.0.0
 is already solving for.
+
+## MAJOR 5 - Serverless, agent-native app (concept, unconfirmed)
+
+Floated 2026-08-05, explicitly tentative - "not sure I want to commit to
+this but it's something to consider," not even at MAJOR 3/4's level of
+confidence. A more radical version of those two: instead of a native iOS
+client that syncs with a self-hosted server (MAJOR 3) or just moves
+extraction on-device while keeping that client/server split (MAJOR 4),
+this would drop the server entirely - the iPhone app becomes the whole
+system, talking directly to AI agents instead of a self-hosted FastAPI
+backend. Would mean rethinking storage (on-device instead of the shared
+SQLite file on Iron), multi-device access (today's self-hosted setup is
+inherently one shared source of truth), and the self-hosted/Unraid
+deployment model this project has been built around since 0.3.0. No
+design work here - revisit only if MAJOR 3/4 in practice reveal the
+server model itself as the real friction, not just a missing
+offline-capable client.

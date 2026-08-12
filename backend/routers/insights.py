@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from .. import crud, database
 from ..insights.narrative import generate_narrative
 from ..insights.stats import get_insights
-from ..models import InsightNarrativeOut, InsightsOut, WindowType
+from ..models import BrewStyle, InsightNarrativeOut, InsightsOut, WindowType
 from ..rate_limit import enforce_cooldown
 
 logger = logging.getLogger(__name__)
@@ -19,10 +19,10 @@ NARRATIVE_COOLDOWN_SECONDS = 30
 
 
 @router.get("", response_model=InsightsOut)
-def read_insights():
+def read_insights(brew_style: Optional[BrewStyle] = None):
     conn = database.get_connection()
     try:
-        return get_insights(conn)
+        return get_insights(conn, brew_style=brew_style)
     finally:
         conn.close()
 
