@@ -483,3 +483,56 @@ def get_counts(conn: sqlite3.Connection) -> dict:
         "ratings": conn.execute("SELECT COUNT(*) AS n FROM ratings").fetchone()["n"],
         "photos": conn.execute("SELECT COUNT(*) AS n FROM entry_photos").fetchone()["n"],
     }
+
+
+# --- 1.1.0: data backup sinks ---
+
+EXPORT_COLUMNS = [
+    "entry_id", "rating_id", "roaster", "bean_name", "is_provisional", "entry_type", "cafe_name",
+    "entry_date", "rating_date", "score", "narrative_notes", "acidity_score", "body_score",
+    "sweetness_score", "brew_style", "repurchase", "origin_country", "region", "farm_producer",
+    "altitude_m", "variety", "process", "co_ferment_status", "co_ferment_ingredient",
+    "certifications", "roast_level", "printed_tasting_notes", "roast_date", "bag_weight_g",
+    "batch_number", "roast_location", "price_paid", "currency",
+]
+
+
+def get_export_rows(conn: sqlite3.Connection) -> list[dict]:
+    # One row per rating (not per entry) - an entry re-rated later produces
+    # two rows sharing the same bag details, which is the natural
+    # "one row per tasting event" shape for a spreadsheet report. This is
+    # a report for opening in a spreadsheet, not a re-import source (see
+    # 1.7.0's JSON export for that) - the entry/rating split doesn't need
+    # to round-trip losslessly here.
+    rows = conn.execute(
+        """
+        SELECT
+            e.id AS entry_id, r.id AS rating_id,
+            bp.roaster, bp.bean_name, bp.is_provisional,
+            e.entry_type, e.cafe_name, e.entry_date,
+            r.date_entered AS rating_date, r.score, r.narrative_notes,
+            r.acidity_score, r.body_score, r.sweetness_score, r.brew_style, r.repurchase,
+            e.origin_country, e.region, e.farm_producer, e.altitude_m, e.variety, e.process,
+            e.co_ferment_status, e.co_ferment_ingredient, e.certifications, e.roast_level,
+            e.printed_tasting_notes, e.roast_date, e.bag_weight_g, e.batch_number,
+            e.roast_location, e.price_paid, e.currency
+        FROM ratings r
+        JOIN entries e ON e.id = r.entry_id
+        JOIN bean_profiles bp ON bp.id = e.bean_profile_id
+        ORDER BY r.date_entered
+        """
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def log_export(conn: sqlite3.Connection, sink: str, status: str) -> None:
+    with conn:
+        conn.execute("INSERT INTO export_log (sink, status) VALUES (?, ?)", (sink, status))
+
+
+def get_last_export(conn: sqlite3.Connection, sink: str) -> Optional[dict]:
+    row = conn.execute(
+        "SELECT sink, exported_at, status FROM export_log WHERE sink = ? ORDER BY exported_at DESC, id DESC LIMIT 1",
+        (sink,),
+    ).fetchone()
+    return dict(row) if row else None

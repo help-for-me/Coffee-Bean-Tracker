@@ -19,6 +19,14 @@ This project uses [Semantic Versioning](https://semver.org/).
   background refresh never spends an API call on its own.
 
 ### Added
+- Data backup sinks on the Export tab: a CSV download (always available,
+  nothing saved on the server), an XLSX download with Raw Data and
+  Summary sheets (optionally also saved to a local file when
+  `LOCAL_XLSX_ENABLED` is set), and an optional GitHub backup button that
+  pushes the same XLSX report to a separate private repo via a personal
+  access token (`GITHUB_BACKUP_ENABLED`, `GITHUB_TOKEN`, `GITHUB_REPO`).
+  Every local-save and GitHub attempt is logged, and the Export page shows
+  when each sink last ran and whether it succeeded.
 - New Entry no longer requires a score to save - a bag can be logged (by
   photo or typed identity) with no rating yet and rated later from "Rate
   a Previous Bean" or Entry Detail, for whenever you haven't tried it yet
