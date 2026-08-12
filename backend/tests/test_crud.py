@@ -177,6 +177,21 @@ def test_create_entry_creates_profile_entry_and_rating(conn):
     assert rating_count == 1
 
 
+def test_create_entry_without_score_creates_no_rating(conn):
+    # "Log it now, rate later" - saving a bag (e.g. from its photo, before
+    # it's been brewed) must not force a rating at the same time.
+    data = EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=None)
+    entry_id = crud.create_entry(conn, data)
+
+    rating_count = conn.execute(
+        "SELECT COUNT(*) AS n FROM ratings WHERE entry_id = ?", (entry_id,)
+    ).fetchone()["n"]
+    assert rating_count == 0
+
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["ratings"] == []
+
+
 def test_create_entry_reuses_existing_profile(conn):
     crud.resolve_bean_profile(conn, "Stumptown", "Hair Bender")
     data = EntryCreate(entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=7)

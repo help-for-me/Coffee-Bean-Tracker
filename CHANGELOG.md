@@ -27,6 +27,11 @@ This project uses [Semantic Versioning](https://semver.org/).
   access token (`GITHUB_BACKUP_ENABLED`, `GITHUB_TOKEN`, `GITHUB_REPO`).
   Every local-save and GitHub attempt is logged, and the Export page shows
   when each sink last ran and whether it succeeded.
+- New Entry no longer requires a score to save - a bag can be logged (by
+  photo or typed identity) with no rating yet and rated later from "Rate
+  a Previous Bean" or Entry Detail, for whenever you haven't tried it yet
+  at the time you're logging it. History and the "Rate a Previous Bean"
+  list show "Not yet rated" for these instead of a blank score.
 - Logging now captures what it needs to for the 1.0.1/1.0.2 manual tests
   to be completed by reviewing the exported log file, rather than tracked
   by hand: every entry (type, typed-vs-photo identity, score) and every

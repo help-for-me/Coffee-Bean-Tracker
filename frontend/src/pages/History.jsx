@@ -40,7 +40,7 @@ export default function History() {
                   </p>
                 </div>
                 <span className="text-sm font-semibold text-purple-700">
-                  {entry.latest_score ?? '—'}
+                  {entry.latest_score ?? <span className="text-xs font-medium text-gray-400">Not yet rated</span>}
                 </span>
               </Link>
             </li>

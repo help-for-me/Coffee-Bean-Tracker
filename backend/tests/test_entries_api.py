@@ -31,6 +31,33 @@ def test_create_entry_rejects_out_of_range_score(client):
     assert response.status_code == 422
 
 
+# --- "log it now, rate later" ---
+
+
+def test_create_entry_without_score_succeeds(client):
+    response = post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender")
+    assert response.status_code == 201
+    body = response.json()
+    assert body["ratings"] == []
+
+
+def test_create_entry_without_score_shows_null_latest_score_in_history(client):
+    post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender")
+    response = client.get("/api/entries")
+    assert response.json()[0]["latest_score"] is None
+
+
+def test_rate_a_previously_unrated_entry(client):
+    create_response = post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender")
+    entry_id = create_response.json()["id"]
+
+    response = client.post(f"/api/entries/{entry_id}/ratings", json={"score": 8})
+    assert response.status_code == 201
+    body = response.json()
+    assert len(body["ratings"]) == 1
+    assert body["ratings"][0]["score"] == 8
+
+
 def test_autocomplete_returns_prefix_matches(client):
     post_entry(client, entry_type="bag", roaster="Stumptown", bean_name="Hair Bender", score=8)
     response = client.get("/api/bean-profiles/autocomplete", params={"q": "Stump"})

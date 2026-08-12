@@ -187,7 +187,10 @@ def create_entry(conn: sqlite3.Connection, data: EntryCreate, has_photos: bool =
             ),
         )
         entry_id = cursor.lastrowid
-        _insert_rating(conn, entry_id, data)
+        # No score means "log it now, rate later" - an entry can exist
+        # with zero ratings until one's added via add_rating.
+        if data.score is not None:
+            _insert_rating(conn, entry_id, data)
     return entry_id
 
 

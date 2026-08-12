@@ -7,7 +7,8 @@ Detailed planning for each milestone. For an at-a-glance checklist, see the
 
 Semantic Versioning (`MAJOR.MINOR.PATCH`):
 - **MAJOR** - a fundamentally new phase (0 = building the MVP, 1 = stable,
-  2 = blank slate, 3 = iOS offline-first companion app, 4 = on-device AI/OCR)
+  2 = blank slate, 3 = iOS offline-first companion app, 4 = on-device
+  AI/OCR, 5 = serverless agent-native app, unconfirmed)
 - **MINOR** - new functionality added
 - **PATCH** - bug fixes/stabilization, no new features
 
@@ -509,6 +510,96 @@ JSON keeps the structure exact so a restore is reliable. CSV (MVP) and
 XLSX (1.1.0) stay as human-readable reports for opening in a spreadsheet,
 not as a re-import source.
 
+### 1.8.0 - Insights: roaster view, note trends, map, nudge
+Four items moved out of "AI-suggested features" below on 2026-08-05 once
+agreed to. All four are additions to the existing Insights page, no new
+data collected - everything they need is already logged.
+
+- **Roaster-level leaderboard.** Every existing Insights ranking groups by
+  bean; grouping by roaster instead (average across everything from a
+  given roaster) answers a different, also-useful question - "which
+  roasters do I trust," not just "which specific bag." Natural fit
+  alongside 1.2.0's attribute switcher, once that's merged.
+- **Tasting-note trends over time.** The favourite-notes ranking (0.4.0)
+  is a snapshot; a month-by-month view of which notes show up and how
+  they score would show a palate shifting over time, not just where it
+  currently stands.
+- **Origin map view.** A simple world map shading the countries logged so
+  far (by count or average score) - Insights' rankings are all lists;
+  this would be the one visual/spatial view.
+- **"Try something new" nudge.** If recent entries cluster heavily on 1-2
+  roasters, a gentle suggestion to branch out - based purely on your own
+  logged patterns here; 1.9.0 below could eventually feed it richer
+  suggestions, but this piece doesn't depend on that.
+
+### 1.9.0 - Roaster website enrichment
+Supersedes MAJOR 2's old "Web-lookup enrichment" stub - formalized here
+2026-08-05 with a real design, agreed to rather than left speculative.
+Extraction today only knows what's printed on the bag/menu; this looks up
+the roaster's own website for the same bean and fills in whatever the
+website has that the label doesn't (fuller origin/farm detail, process
+notes, tasting notes, roaster's own copy) - first pass is the roaster's
+own site specifically, not a general web search.
+
+- **Trigger: both.** An automatic first-pass lookup the first time a
+  roaster is seen (background job, mirrors the AI photo extraction
+  pattern), plus a manual "reprocess" button available any time after
+  (mirrors 0.7.0's re-extract button).
+- **Source storage: raw HTML**, saved locally alongside the entry/bean
+  profile it informed - picked specifically because it's the cheapest
+  format to both store and reprocess (re-run extraction against a saved
+  page with no new network fetch needed), unlike a PDF snapshot which
+  would need a headless-browser render step to produce and isn't
+  practical to feed back through text extraction later.
+- **Reprocess flow, on manual request:** first surface a short summary of
+  which source(s) the original lookup used and an assessment of whether
+  that source still looks reliable/current for this bean. If it does,
+  reprocess is fast and free of new network calls - re-run extraction
+  against the already-saved HTML. If it doesn't (site restructured,
+  product delisted, content that no longer matches), go back out and
+  search for a better source instead of trusting the stale copy.
+- Not yet decided: exactly how a saved source gets judged "reliable" (an
+  AI judgment call as part of generating that summary is the likely
+  shape, given the same pattern the narrative/extraction prompts already
+  use) - fine to settle at build time, doesn't block scoping this now.
+
+### 1.10.0 - Photo thumbnails
+Agreed 2026-08-05. History and Entry Detail's photo galleries currently
+serve full-resolution phone photos (often several MB each) for
+thumbnail-sized previews - wasted bandwidth and a slower page over LAN
+Wi-Fi, worse the more photos an entry or a bean profile has. Generate a
+small resized copy (~200px) alongside the original at upload time and
+serve that for every list/grid view; only load the full-size original
+when a photo is actually opened.
+
+---
+
+## AI-suggested features
+
+Ideas Claude has floated unprompted, not requested by the user. **None of
+these get built without explicit agreement first** - this list exists so a
+good idea doesn't get lost, not as an approved backlog. Move an item out of
+this section (into a real MINOR/MAJOR slot, or MAJOR 2's candidate list
+below) once it's actually been agreed to; drop it entirely if it turns out
+not to be wanted. Sits here, between MAJOR 1 and MAJOR 2, because that's
+exactly what it is: a parking lot for ideas that haven't yet been sorted
+into either a firm, numbered commitment (MAJOR 1) or the looser
+candidate list below (MAJOR 2) - not a phase of its own.
+
+- **Freshness flag on entries.** `roast_date` is already captured for most
+  bags - flag or visually mark entries past a typical peak-freshness
+  window (roughly 2-8 weeks post-roast depending on process) on History/
+  Entry Detail, so a stale bag doesn't get blamed on the bean itself.
+- **Cost-per-cup / value ranking.** `price_paid` and `bag_weight_g` are
+  already captured - a "best value" ranking (score relative to $/100g or
+  estimated $/cup) alongside the existing "best score" rankings in
+  Insights, for the days budget matters as much as flavour.
+- **Proactive repeat-purchase surfacing.** 0.8.0's fuzzy matching already
+  merges a re-typed identity into the right profile after the fact - this
+  would surface it *before* saving ("You've had this before, rated it
+  8.5 on 2026-06-01") right in the New Entry form, using the same fuzzy
+  match while typing rather than only on submit.
+
 ---
 
 ## MAJOR 2 - Blank slate
@@ -525,9 +616,6 @@ specific sub-version:
   this only makes *installing* it nicer.
 - Unraid Community Applications feed listing (public template submission)
 - Proxmox VE Helper-Scripts install script (community submission)
-- Web-lookup enrichment: describe a bean by text or photo, app searches
-  the internet to fill in the gaps - explicitly the lowest priority idea
-  on this whole list
 - Human-readable photo filenames: currently `{entry_id}_{yyyymmdd}_{upload_order}.jpg`
   (e.g. `2_20260803_1.jpg`), meaningless without cross-referencing the
   database. Include the roaster/bean name or some other identifiable key
@@ -548,45 +636,6 @@ specific sub-version:
   UI text and the wording instruction sent to the AI for generated
   content (e.g. the Insights summary), not extracted bag text, which is
   always copied verbatim from the label regardless of this setting.
-
----
-
-## AI-suggested features
-
-Ideas Claude has floated unprompted, not requested by the user. **None of
-these get built without explicit agreement first** - this list exists so a
-good idea doesn't get lost, not as an approved backlog. Move an item out of
-this section (into a real MINOR/MAJOR slot, or MAJOR 2's candidate list)
-once it's actually been agreed to; drop it entirely if it turns out not to
-be wanted.
-
-- **Freshness flag on entries.** `roast_date` is already captured for most
-  bags - flag or visually mark entries past a typical peak-freshness
-  window (roughly 2-8 weeks post-roast depending on process) on History/
-  Entry Detail, so a stale bag doesn't get blamed on the bean itself.
-- **Cost-per-cup / value ranking.** `price_paid` and `bag_weight_g` are
-  already captured - a "best value" ranking (score relative to $/100g or
-  estimated $/cup) alongside the existing "best score" rankings in
-  Insights, for the days budget matters as much as flavour.
-- **Roaster-level leaderboard.** Every existing Insights ranking groups by
-  bean; grouping by roaster instead (average across everything from a
-  given roaster) answers a different, also-useful question - "which
-  roasters do I trust," not just "which specific bag."
-- **Proactive repeat-purchase surfacing.** 0.8.0's fuzzy matching already
-  merges a re-typed identity into the right profile after the fact - this
-  would surface it *before* saving ("You've had this before, rated it
-  8.5 on 2026-06-01") right in the New Entry form, using the same fuzzy
-  match while typing rather than only on submit.
-- **Tasting-note trends over time.** The favourite-notes ranking (0.4.0)
-  is a snapshot; a month-by-month view of which notes show up and how
-  they score would show a palate shifting over time, not just where it
-  currently stands.
-- **Origin map view.** A simple world map shading the countries logged so
-  far (by count or average score) - Insights' rankings are all lists;
-  this would be the one visual/spatial view.
-- **"Try something new" nudge.** If recent entries cluster heavily on 1-2
-  roasters, a gentle suggestion to branch out - low-effort, ties into
-  MAJOR 2's already-listed web-lookup enrichment idea if that ever lands.
 
 ---
 
@@ -615,3 +664,20 @@ directly on the device (e.g. Apple's Vision/on-device model frameworks)
 instead of round-tripping to Claude's API - most relevant for the
 "phone can't currently reach the server or the internet" case that 3.0.0
 is already solving for.
+
+## MAJOR 5 - Serverless, agent-native app (concept, unconfirmed)
+
+Floated 2026-08-05, explicitly tentative - "not sure I want to commit to
+this but it's something to consider," not even at MAJOR 3/4's level of
+confidence. A more radical version of those two: instead of a native iOS
+client that syncs with a self-hosted server (MAJOR 3) or just moves
+extraction on-device while keeping that client/server split (MAJOR 4),
+this would drop the server entirely - the iPhone app becomes the whole
+system, talking directly to AI agents instead of a self-hosted FastAPI
+backend. Would mean rethinking storage (on-device instead of the shared
+SQLite file on Iron), multi-device access (today's self-hosted setup is
+inherently one shared source of truth), and the self-hosted/Unraid
+deployment model this project has been built around since 0.3.0. No
+design work here - revisit only if MAJOR 3/4 in practice reveal the
+server model itself as the real friction, not just a missing
+offline-capable client.
