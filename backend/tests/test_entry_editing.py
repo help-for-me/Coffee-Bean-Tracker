@@ -36,8 +36,10 @@ def test_update_entry_can_clear_a_field_to_null(conn):
 
 def test_update_entry_ignores_non_updatable_keys(conn):
     entry_id = _create(conn)
-    # entry_type/roaster aren't in _UPDATABLE_ENTRY_FIELDS - identity and
-    # entry type aren't editable through this path.
+    # entry_type/roaster aren't in _UPDATABLE_ENTRY_FIELDS - entry_type
+    # never changes after creation, and identity goes through
+    # crud.update_entry_identity instead (see test_entry_identity.py),
+    # not this plain-column path.
     updated = crud.update_entry(conn, entry_id, {"entry_type": "cafe_cup", "roast_level": "Light"})
     assert updated is True
     entry = crud.get_entry(conn, entry_id)

@@ -19,6 +19,14 @@ This project uses [Semantic Versioning](https://semver.org/).
   background refresh never spends an API call on its own.
 
 ### Added
+- Entry Detail now has an "Edit" link on the bean name/roaster itself, for
+  when extraction (or a typo) gets the identity wrong - e.g. filing a
+  bag's product name as the roaster because the label had no visible
+  roaster logo. Correcting it also automatically re-runs the roaster
+  website lookup with the corrected name, since a wrong roaster name was
+  the most common way that lookup would fail to find anything. Splits a
+  shared bean profile off (rather than renaming every entry under it) if
+  the correction only applies to this one entry.
 - Full data backup and restore (`GET`/`POST /data/export`/`import`): the
   Export page can now download a JSON file with everything in the app -
   every bean profile, entry, rating, and photo record - for restoring or

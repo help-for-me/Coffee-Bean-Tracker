@@ -9,7 +9,17 @@ from .. import crud, database
 from ..enrichment import run_enrichment_lookup
 from ..extraction import run_extraction
 from ..image_utils import sniff_image_type
-from ..models import EntryCreate, EntryOut, EntrySort, EntrySummary, EntryType, EntryUpdate, RatingCreate, RatingUpdate
+from ..models import (
+    EntryCreate,
+    EntryIdentityUpdate,
+    EntryOut,
+    EntrySort,
+    EntrySummary,
+    EntryType,
+    EntryUpdate,
+    RatingCreate,
+    RatingUpdate,
+)
 from ..photos import save_photo
 from ..rate_limit import enforce_cooldown
 
@@ -157,6 +167,28 @@ def update_entry(entry_id: int, data: EntryUpdate):
         updated = crud.update_entry(conn, entry_id, data.model_dump(exclude_unset=True))
         if not updated:
             raise HTTPException(status_code=404, detail="Entry not found")
+        return crud.get_entry(conn, entry_id)
+    finally:
+        conn.close()
+
+
+@router.patch("/{entry_id}/identity", response_model=EntryOut)
+def update_entry_identity(entry_id: int, data: EntryIdentityUpdate, background_tasks: BackgroundTasks):
+    roaster = data.roaster.strip()
+    bean_name = data.bean_name.strip()
+    if not roaster or not bean_name:
+        raise HTTPException(status_code=422, detail="Roaster and bean name are both required.")
+    conn = database.get_connection()
+    try:
+        new_bean_profile_id = crud.update_entry_identity(conn, entry_id, roaster, bean_name)
+        if new_bean_profile_id is None:
+            raise HTTPException(status_code=404, detail="Entry not found")
+        logger.info("Entry identity corrected: id=%s bean=%r", entry_id, f"{roaster} — {bean_name}")
+        # The old identity's enrichment (if any) is now known-stale and was
+        # already cleared by crud.update_entry_identity - safe to trigger a
+        # fresh lookup against the corrected name.
+        if crud.maybe_start_enrichment(conn, new_bean_profile_id):
+            background_tasks.add_task(run_enrichment_lookup, new_bean_profile_id)
         return crud.get_entry(conn, entry_id)
     finally:
         conn.close()

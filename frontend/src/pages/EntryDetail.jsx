@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { deleteEntry, deleteRating, getEntry, photoUrl, reextractEntry, updateEntry, updateRating } from '../api'
+import {
+  deleteEntry,
+  deleteRating,
+  getEntry,
+  photoUrl,
+  reextractEntry,
+  updateEntry,
+  updateEntryIdentity,
+  updateRating,
+} from '../api'
 import { beanProfileDisplayName } from '../utils/beanProfileDisplay'
 import Field from '../components/Field'
 import RatingRow from '../components/RatingRow'
@@ -75,6 +84,9 @@ export default function EntryDetail() {
   const [editingDetails, setEditingDetails] = useState(false)
   const [detailsForm, setDetailsForm] = useState(null)
   const [savingDetails, setSavingDetails] = useState(false)
+  const [editingIdentity, setEditingIdentity] = useState(false)
+  const [identityForm, setIdentityForm] = useState(null)
+  const [savingIdentity, setSavingIdentity] = useState(false)
   const [reextracting, setReextracting] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -118,6 +130,28 @@ export default function EntryDetail() {
       setError(err.message)
     } finally {
       setSavingDetails(false)
+    }
+  }
+
+  const startEditingIdentity = () => {
+    setIdentityForm({
+      roaster: entry.bean_profile.is_provisional ? '' : entry.bean_profile.roaster,
+      bean_name: entry.bean_profile.is_provisional ? '' : entry.bean_profile.bean_name,
+    })
+    setEditingIdentity(true)
+  }
+
+  const handleSaveIdentity = async () => {
+    setSavingIdentity(true)
+    setError(null)
+    try {
+      const updated = await updateEntryIdentity(entry.id, identityForm.roaster, identityForm.bean_name)
+      setEntry(updated)
+      setEditingIdentity(false)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingIdentity(false)
     }
   }
 
@@ -166,9 +200,58 @@ export default function EntryDetail() {
       <span className="mb-2 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">
         {entry.entry_type === 'bag' ? 'Bag' : 'Cafe'}
       </span>
-      <h1 className="text-lg font-semibold text-gray-900">
-        {beanProfileDisplayName(entry.bean_profile, entry.extraction_status)}
-      </h1>
+
+      {!editingIdentity ? (
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-lg font-semibold text-gray-900">
+            {beanProfileDisplayName(entry.bean_profile, entry.extraction_status)}
+          </h1>
+          <button
+            type="button"
+            onClick={startEditingIdentity}
+            className="mt-0.5 shrink-0 text-xs font-medium text-purple-700"
+          >
+            Edit
+          </button>
+        </div>
+      ) : (
+        <div className="mb-2 rounded-md border border-gray-200 p-3">
+          <p className="mb-2 text-xs text-gray-500">
+            Correct the roaster or bean name if extraction (or a typo) got it wrong. This also
+            re-runs the roaster website lookup with the corrected name.
+          </p>
+          <Field
+            label="Roaster"
+            value={identityForm.roaster}
+            onChange={(e) => setIdentityForm((f) => ({ ...f, roaster: e.target.value }))}
+          />
+          <div className="mt-2">
+            <Field
+              label="Bean name"
+              value={identityForm.bean_name}
+              onChange={(e) => setIdentityForm((f) => ({ ...f, bean_name: e.target.value }))}
+            />
+          </div>
+          <div className="mt-2 flex gap-3">
+            <button
+              type="button"
+              onClick={() => setEditingIdentity(false)}
+              className="text-xs font-medium text-gray-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveIdentity}
+              disabled={savingIdentity || !identityForm.roaster.trim() || !identityForm.bean_name.trim()}
+              className="text-xs font-medium text-purple-700 disabled:opacity-50"
+            >
+              {savingIdentity ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {entry.cafe_name && <p className="text-sm text-gray-500">{entry.cafe_name}</p>}
       <p className="mb-4 text-sm text-gray-500">
         {entry.entry_date ?? entry.date_entered.slice(0, 10)}

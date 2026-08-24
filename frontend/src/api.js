@@ -82,6 +82,13 @@ export function updateEntry(id, data) {
   return request(`/entries/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
 }
 
+export function updateEntryIdentity(id, roaster, beanName) {
+  return request(`/entries/${id}/identity`, {
+    method: 'PATCH',
+    body: JSON.stringify({ roaster, bean_name: beanName }),
+  })
+}
+
 export function deleteEntry(id) {
   return request(`/entries/${id}`, { method: 'DELETE' })
 }

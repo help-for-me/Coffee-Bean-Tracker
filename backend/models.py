@@ -63,6 +63,17 @@ class RatingCreate(RatingFields):
     pass
 
 
+class EntryIdentityUpdate(BaseModel):
+    # Separate from EntryUpdate - correcting a wrong or provisional
+    # identity moves the entry between bean_profiles rows rather than
+    # editing a plain column, so it needs its own crud path (see
+    # crud.update_entry_identity). Both fields required - unlike
+    # EntryUpdate's per-field optionality, there's no such thing as a
+    # partial identity.
+    roaster: str
+    bean_name: str
+
+
 class EntryUpdate(BaseModel):
     # Manual correction UI (0.7.0) - every field optional, and unlike
     # apply_extraction_result's COALESCE-skip-nulls merge, an explicit null
