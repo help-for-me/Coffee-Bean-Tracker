@@ -131,7 +131,11 @@ export default function RoasterMatchCard({ beanProfile, onChanged }) {
       {enrichment.status !== 'pending' && (
         <div className="mt-2 flex flex-wrap gap-4">
           {!showContext ? (
-            <button type="button" onClick={() => setShowContext(true)} className="text-xs font-medium text-purple-700">
+            <button
+              type="button"
+              onClick={() => setShowContext(true)}
+              className="rounded-md border border-purple-700 px-2 py-1 text-xs font-medium text-purple-700"
+            >
               {reprocessLabel}
             </button>
           ) : (
@@ -162,7 +166,11 @@ export default function RoasterMatchCard({ beanProfile, onChanged }) {
           )}
 
           {!showFoundIt ? (
-            <button type="button" onClick={() => setShowFoundIt(true)} className="text-xs font-medium text-purple-700">
+            <button
+              type="button"
+              onClick={() => setShowFoundIt(true)}
+              className="rounded-md border border-purple-700 px-2 py-1 text-xs font-medium text-purple-700"
+            >
               I found it myself
             </button>
           ) : (

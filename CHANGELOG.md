@@ -7,6 +7,12 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- "Reprocess" and "I found it myself" on the roaster website match box were
+  plain text, easy to mistake for status labels rather than tappable
+  buttons - especially on a phone. They're now styled as buttons, matching
+  the other actions in that box.
+
 ### Changed
 - The project now writes everything - UI text, docs, and the AI-generated
   Insights summary - in Canadian English, per a new standing policy (see
