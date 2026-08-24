@@ -115,6 +115,23 @@ export function reprocessEnrichment(beanProfileId, context) {
   })
 }
 
+export function submitManualEnrichmentUrl(beanProfileId, url) {
+  return request(`/bean-profiles/${beanProfileId}/enrichment/manual-url`, {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  })
+}
+
+export function uploadEnrichmentSource(beanProfileId, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request(`/bean-profiles/${beanProfileId}/enrichment/upload`, {
+    method: 'POST',
+    body: formData,
+    headers: {},
+  })
+}
+
 export async function downloadDataExport() {
   const response = await fetch(`${BASE_URL}${API_PREFIX}/data/export`)
   if (!response.ok) {

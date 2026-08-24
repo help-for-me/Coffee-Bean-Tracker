@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { confirmEnrichmentCandidate, reprocessEnrichment } from '../api'
+import { useRef, useState } from 'react'
+import { confirmEnrichmentCandidate, reprocessEnrichment, submitManualEnrichmentUrl, uploadEnrichmentSource } from '../api'
 
 const STATUS_LABEL = {
   pending: 'Looking it up...',
@@ -16,8 +16,11 @@ const STATUS_LABEL = {
 export default function RoasterMatchCard({ beanProfile, onChanged }) {
   const [contextText, setContextText] = useState('')
   const [showContext, setShowContext] = useState(false)
+  const [manualUrl, setManualUrl] = useState('')
+  const [showFoundIt, setShowFoundIt] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const fileInputRef = useRef(null)
 
   const enrichment = beanProfile.enrichment
   if (!enrichment) return null
@@ -42,6 +45,38 @@ export default function RoasterMatchCard({ beanProfile, onChanged }) {
       await reprocessEnrichment(beanProfile.id, contextText.trim())
       setShowContext(false)
       setContextText('')
+      await onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleSubmitManualUrl = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await submitManualEnrichmentUrl(beanProfile.id, manualUrl.trim())
+      setShowFoundIt(false)
+      setManualUrl('')
+      await onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleFileChosen = async (e) => {
+    const file = e.target.files[0]
+    e.target.value = '' // lets the same file be picked again later
+    if (!file) return
+    setBusy(true)
+    setError(null)
+    try {
+      await uploadEnrichmentSource(beanProfile.id, file)
+      setShowFoundIt(false)
       await onChanged()
     } catch (err) {
       setError(err.message)
@@ -94,13 +129,13 @@ export default function RoasterMatchCard({ beanProfile, onChanged }) {
       )}
 
       {enrichment.status !== 'pending' && (
-        <div className="mt-2">
+        <div className="mt-2 flex flex-wrap gap-4">
           {!showContext ? (
             <button type="button" onClick={() => setShowContext(true)} className="text-xs font-medium text-purple-700">
               {reprocessLabel}
             </button>
           ) : (
-            <div>
+            <div className="w-full">
               <label className="mb-1 block text-xs text-gray-600">
                 Anything that would help find the right page? (optional)
               </label>
@@ -123,6 +158,55 @@ export default function RoasterMatchCard({ beanProfile, onChanged }) {
                   {busy ? 'Searching...' : 'Search again'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {!showFoundIt ? (
+            <button type="button" onClick={() => setShowFoundIt(true)} className="text-xs font-medium text-purple-700">
+              I found it myself
+            </button>
+          ) : (
+            <div className="w-full">
+              <label className="mb-1 block text-xs text-gray-600">Paste the product page URL</label>
+              <input
+                value={manualUrl}
+                onChange={(e) => setManualUrl(e.target.value)}
+                placeholder="https://roaster.example/products/this-bean"
+                className="mb-2 w-full rounded-md border border-gray-300 px-2 py-1 text-xs"
+              />
+              <div className="mb-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowFoundIt(false)}
+                  className="text-xs font-medium text-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitManualUrl}
+                  disabled={busy || !manualUrl.trim()}
+                  className="text-xs font-medium text-purple-700 disabled:opacity-50"
+                >
+                  {busy ? 'Fetching...' : 'Use this page'}
+                </button>
+              </div>
+              <p className="mb-1 text-xs text-gray-500">Or upload a screenshot or PDF with the roaster's info:</p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy}
+                className="rounded-md border border-purple-700 px-2 py-1 text-xs font-medium text-purple-700 disabled:opacity-50"
+              >
+                {busy ? 'Uploading...' : 'Choose file...'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={handleFileChosen}
+                className="hidden"
+              />
             </div>
           )}
         </div>

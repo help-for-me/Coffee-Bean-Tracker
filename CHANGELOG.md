@@ -27,6 +27,14 @@ This project uses [Semantic Versioning](https://semver.org/).
   the most common way that lookup would fail to find anything. Splits a
   shared bean profile off (rather than renaming every entry under it) if
   the correction only applies to this one entry.
+- The roaster website match box on Entry Detail now has an "I found it
+  myself" option, for when the automated search can't find the right
+  page but you can: paste a product page URL directly, or upload a
+  screenshot or PDF with the roaster's own info on it. An uploaded source
+  is treated as authoritative and confirmed immediately, no candidate
+  review needed - a background web search then runs once more purely to
+  fill in whatever fields the upload didn't cover, never overriding what
+  it already found.
 - Full data backup and restore (`GET`/`POST /data/export`/`import`): the
   Export page can now download a JSON file with everything in the app -
   every bean profile, entry, rating, and photo record - for restoring or

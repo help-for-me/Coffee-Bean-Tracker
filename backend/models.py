@@ -137,6 +137,15 @@ class EnrichmentReprocess(BaseModel):
     context: Optional[str] = None
 
 
+class EnrichmentManualUrl(BaseModel):
+    # For when the automated search can't find it but the user, searching
+    # by hand, can - skips straight to fetch+extract against a URL the
+    # user supplies themselves, with no candidate-list membership check
+    # (unlike EnrichmentConfirm, which only accepts a URL Claude itself
+    # offered).
+    url: str
+
+
 class BeanProfileOut(BaseModel):
     id: int
     roaster: str

@@ -16,6 +16,9 @@ class FakeMatcher(RoasterMatcher):
     def fetch_and_extract(self, url):
         return {"fields": {}, "source_text": None}
 
+    def extract_from_upload(self, file_bytes, media_type):
+        raise NotImplementedError("not exercised by these tests")
+
 
 def _create(conn, roaster="Stumptown", bean_name="Hair Bender", score=7, **fields):
     data = EntryCreate(entry_type="bag", roaster=roaster, bean_name=bean_name, score=score, **fields)

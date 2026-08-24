@@ -663,8 +663,16 @@ def mark_enrichment_failed(conn: sqlite3.Connection, bean_profile_id: int) -> No
 
 
 def confirm_enrichment(
-    conn: sqlite3.Connection, bean_profile_id: int, url: str, title: str, source_path: Optional[str], fields: dict
+    conn: sqlite3.Connection,
+    bean_profile_id: int,
+    url: Optional[str],
+    title: Optional[str],
+    source_path: Optional[str],
+    fields: dict,
 ) -> None:
+    # url is None for an uploaded source (screenshot/PDF the user supplied
+    # directly, with no web page behind it) - status still becomes
+    # 'confirmed', just with nothing to link out to.
     with conn:
         conn.execute(
             """
@@ -676,6 +684,16 @@ def confirm_enrichment(
             """,
             (bean_profile_id, url, source_path),
         )
+        _apply_enrichment_fields(conn, bean_profile_id, fields)
+
+
+def fill_bean_profile_gaps(conn: sqlite3.Connection, bean_profile_id: int, fields: dict) -> None:
+    # Same fill-nulls-only merge as confirm_enrichment, but without
+    # touching the enrichment row's status/source - for the supplementary
+    # web-search pass after an upload-confirmed source, which should only
+    # ever fill whatever the upload didn't cover, never override it or
+    # its "confirmed" status/source metadata.
+    with conn:
         _apply_enrichment_fields(conn, bean_profile_id, fields)
 
 
