@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from typing import Optional
@@ -67,6 +68,36 @@ from general knowledge about the roaster or region. website_description is
 a short excerpt (1-2 sentences) of the roaster's own descriptive copy about
 this coffee, if the page has any beyond a bare spec list - leave it null if
 the page is just a spec sheet with nothing worth quoting."""
+
+UPLOAD_EXTRACT_PROMPT = """The attached file is a screenshot or document (e.g. a PDF spec sheet) the
+user supplied themselves, containing the roaster's own information about a
+specific coffee - not a photo of the physical bag, and not something
+fetched from the web. Extract whatever structured coffee information it
+states.
+
+Return ONLY valid JSON, no markdown, no preamble, matching this schema:
+
+{
+  "origin_country": string or null,
+  "region": string or null,
+  "farm_producer": string or null,
+  "altitude_m": number or null,
+  "variety": string or null,
+  "process": string or null,
+  "co_ferment_status": "yes" or "no" or "unknown",
+  "co_ferment_ingredient": string or null,
+  "certifications": string or null,
+  "roast_level": string or null,
+  "printed_tasting_notes": string or null,
+  "roast_location": string or null,
+  "website_description": string or null
+}
+
+Only fill a field when the file actually states it - never guess or infer
+from general knowledge about the roaster or region. website_description is
+a short excerpt (1-2 sentences) of the roaster's own descriptive copy about
+this coffee, if there is any beyond a bare spec list - leave it null if
+it's just a spec sheet with nothing worth quoting."""
 
 
 def _response_text(content_blocks) -> str:
@@ -145,3 +176,21 @@ class ClaudeRoasterMatcher(RoasterMatcher):
             "fields": _parse_json(response.content),
             "source_text": _extract_fetched_text(response.content),
         }
+
+    def extract_from_upload(self, file_bytes: bytes, media_type: str) -> dict:
+        if media_type == "application/pdf":
+            content_block = {
+                "type": "document",
+                "source": {"type": "base64", "media_type": media_type, "data": base64.b64encode(file_bytes).decode("utf-8")},
+            }
+        else:
+            content_block = {
+                "type": "image",
+                "source": {"type": "base64", "media_type": media_type, "data": base64.b64encode(file_bytes).decode("utf-8")},
+            }
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": [content_block, {"type": "text", "text": UPLOAD_EXTRACT_PROMPT}]}],
+        )
+        return _parse_json(response.content)

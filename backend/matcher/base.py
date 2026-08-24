@@ -16,3 +16,10 @@ class RoasterMatcher(ABC):
         """Fetches a confirmed product page and extracts structured coffee
         fields from it. Returns {"fields": {...}, "source_text": str or None}."""
         ...
+
+    @abstractmethod
+    def extract_from_upload(self, file_bytes: bytes, media_type: str) -> dict:
+        """Extracts structured coffee fields directly from a user-supplied
+        image or PDF (a screenshot or spec sheet the user found themselves),
+        with no web search or fetch involved. Returns the fields dict."""
+        ...

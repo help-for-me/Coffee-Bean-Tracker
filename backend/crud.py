@@ -451,6 +451,60 @@ def update_entry(conn: sqlite3.Connection, entry_id: int, fields: dict) -> bool:
     return cursor.rowcount > 0
 
 
+def update_entry_identity(conn: sqlite3.Connection, entry_id: int, roaster: str, bean_name: str) -> Optional[int]:
+    # Corrects a wrong or provisional identity after the fact (e.g.
+    # extraction misfiled the roaster) - not exposed through update_entry,
+    # since identity means "which bean_profile does this entry belong to,"
+    # not a plain column edit. Three cases:
+    #   1. The corrected name matches an existing (different) profile
+    #      exactly - move this entry there, and clean up the old profile
+    #      if this was its last entry.
+    #   2. The old profile has other entries besides this one - split just
+    #      this entry off into its own (new-or-existing) profile, rather
+    #      than renaming everyone else's identity along with it.
+    #   3. Otherwise (provisional, or this entry is the profile's only one)
+    #      - safe to rename the existing profile in place.
+    # Returns the entry's resulting bean_profile_id, or None if the entry
+    # doesn't exist. Any enrichment already run against a since-corrected
+    # identity is stale and gets cleared so a fresh lookup can trigger.
+    roaster = roaster.strip()
+    bean_name = bean_name.strip()
+    with conn:
+        row = conn.execute("SELECT bean_profile_id FROM entries WHERE id = ?", (entry_id,)).fetchone()
+        if row is None:
+            return None
+        old_profile_id = row["bean_profile_id"]
+
+        existing = conn.execute(
+            "SELECT id FROM bean_profiles WHERE roaster = ? COLLATE NOCASE AND bean_name = ? COLLATE NOCASE AND id != ?",
+            (roaster, bean_name, old_profile_id),
+        ).fetchone()
+        if existing:
+            new_profile_id = existing["id"]
+            conn.execute("UPDATE entries SET bean_profile_id = ? WHERE id = ?", (new_profile_id, entry_id))
+        else:
+            other_entries_remain = conn.execute(
+                "SELECT 1 FROM entries WHERE bean_profile_id = ? AND id != ?", (old_profile_id, entry_id)
+            ).fetchone()
+            if other_entries_remain:
+                new_profile_id = resolve_bean_profile(conn, roaster, bean_name)
+                conn.execute("UPDATE entries SET bean_profile_id = ? WHERE id = ?", (new_profile_id, entry_id))
+            else:
+                conn.execute(
+                    "UPDATE bean_profiles SET roaster = ?, bean_name = ?, is_provisional = 0 WHERE id = ?",
+                    (roaster, bean_name, old_profile_id),
+                )
+                new_profile_id = old_profile_id
+                conn.execute("DELETE FROM bean_profile_enrichment WHERE bean_profile_id = ?", (old_profile_id,))
+
+        if new_profile_id != old_profile_id:
+            remaining = conn.execute("SELECT 1 FROM entries WHERE bean_profile_id = ?", (old_profile_id,)).fetchone()
+            if remaining is None:
+                conn.execute("DELETE FROM bean_profile_enrichment WHERE bean_profile_id = ?", (old_profile_id,))
+                conn.execute("DELETE FROM bean_profiles WHERE id = ?", (old_profile_id,))
+    return new_profile_id
+
+
 def delete_entry(conn: sqlite3.Connection, entry_id: int) -> Optional[list[str]]:
     # Returns the deleted entry's photo file paths (so the router can
     # remove the actual files) or None if the entry didn't exist. No
@@ -609,8 +663,16 @@ def mark_enrichment_failed(conn: sqlite3.Connection, bean_profile_id: int) -> No
 
 
 def confirm_enrichment(
-    conn: sqlite3.Connection, bean_profile_id: int, url: str, title: str, source_path: Optional[str], fields: dict
+    conn: sqlite3.Connection,
+    bean_profile_id: int,
+    url: Optional[str],
+    title: Optional[str],
+    source_path: Optional[str],
+    fields: dict,
 ) -> None:
+    # url is None for an uploaded source (screenshot/PDF the user supplied
+    # directly, with no web page behind it) - status still becomes
+    # 'confirmed', just with nothing to link out to.
     with conn:
         conn.execute(
             """
@@ -622,6 +684,16 @@ def confirm_enrichment(
             """,
             (bean_profile_id, url, source_path),
         )
+        _apply_enrichment_fields(conn, bean_profile_id, fields)
+
+
+def fill_bean_profile_gaps(conn: sqlite3.Connection, bean_profile_id: int, fields: dict) -> None:
+    # Same fill-nulls-only merge as confirm_enrichment, but without
+    # touching the enrichment row's status/source - for the supplementary
+    # web-search pass after an upload-confirmed source, which should only
+    # ever fill whatever the upload didn't cover, never override it or
+    # its "confirmed" status/source metadata.
+    with conn:
         _apply_enrichment_fields(conn, bean_profile_id, fields)
 
 

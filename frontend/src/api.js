@@ -82,6 +82,13 @@ export function updateEntry(id, data) {
   return request(`/entries/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
 }
 
+export function updateEntryIdentity(id, roaster, beanName) {
+  return request(`/entries/${id}/identity`, {
+    method: 'PATCH',
+    body: JSON.stringify({ roaster, bean_name: beanName }),
+  })
+}
+
 export function deleteEntry(id) {
   return request(`/entries/${id}`, { method: 'DELETE' })
 }
@@ -105,6 +112,23 @@ export function reprocessEnrichment(beanProfileId, context) {
   return request(`/bean-profiles/${beanProfileId}/enrichment/reprocess`, {
     method: 'POST',
     body: JSON.stringify({ context: context || null }),
+  })
+}
+
+export function submitManualEnrichmentUrl(beanProfileId, url) {
+  return request(`/bean-profiles/${beanProfileId}/enrichment/manual-url`, {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  })
+}
+
+export function uploadEnrichmentSource(beanProfileId, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request(`/bean-profiles/${beanProfileId}/enrichment/upload`, {
+    method: 'POST',
+    body: formData,
+    headers: {},
   })
 }
 

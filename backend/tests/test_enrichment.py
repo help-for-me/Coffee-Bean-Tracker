@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from backend import crud, enrichment_sources
-from backend.enrichment import run_enrichment_confirm, run_enrichment_lookup
+from backend.enrichment import run_enrichment_confirm, run_enrichment_lookup, run_enrichment_upload
 from backend.matcher.base import RoasterMatcher
 from backend.models import EntryCreate
 
@@ -16,13 +16,24 @@ def _sources_path(tmp_path, monkeypatch):
 
 
 class FakeMatcher(RoasterMatcher):
-    def __init__(self, find_result=None, extract_result=None, find_error=None, extract_error=None):
+    def __init__(
+        self,
+        find_result=None,
+        extract_result=None,
+        upload_result=None,
+        find_error=None,
+        extract_error=None,
+        upload_error=None,
+    ):
         self.find_result = find_result
         self.extract_result = extract_result
+        self.upload_result = upload_result
         self.find_error = find_error
         self.extract_error = extract_error
+        self.upload_error = upload_error
         self.find_calls = []
         self.extract_calls = []
+        self.upload_calls = []
 
     def find_candidates(self, roaster, bean_name, extra_context=None):
         self.find_calls.append((roaster, bean_name, extra_context))
@@ -35,6 +46,12 @@ class FakeMatcher(RoasterMatcher):
         if self.extract_error:
             raise self.extract_error
         return self.extract_result
+
+    def extract_from_upload(self, file_bytes, media_type):
+        self.upload_calls.append((file_bytes, media_type))
+        if self.upload_error:
+            raise self.upload_error
+        return self.upload_result
 
 
 def _create_entry(conn, roaster="Funk Coffee", bean_name="Here Comes the Flood", **fields):
@@ -301,3 +318,122 @@ def test_website_description_round_trips_through_update_entry(conn):
     entry_id = _create_entry(conn)
     crud.update_entry(conn, entry_id, {"website_description": "A juicy Kenyan filter roast."})
     assert crud.get_entry(conn, entry_id)["website_description"] == "A juicy Kenyan filter roast."
+
+
+# --- run_enrichment_upload (a user-supplied screenshot/PDF) ---
+
+
+def test_upload_confirms_immediately_with_no_source_url(conn):
+    entry_id = _create_entry(conn)
+    bean_profile_id = _bean_profile_id(conn, entry_id)
+    matcher = FakeMatcher(
+        upload_result={"origin_country": "Kenya", "process": "Washed"},
+        find_result={"confident_match": None, "candidates": []},
+    )
+
+    run_enrichment_upload(bean_profile_id, b"fake-image-bytes", "image/jpeg", matcher=matcher)
+
+    enrichment = crud.get_enrichment(conn, bean_profile_id)
+    assert enrichment["status"] == "confirmed"
+    assert enrichment["source_url"] is None
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["origin_country"] == "Kenya"
+    assert entry["process"] == "Washed"
+    assert matcher.upload_calls == [(b"fake-image-bytes", "image/jpeg")]
+
+
+def test_upload_never_overwrites_label_data(conn):
+    entry_id = _create_entry(conn, origin_country="Colombia")
+    bean_profile_id = _bean_profile_id(conn, entry_id)
+    matcher = FakeMatcher(
+        upload_result={"origin_country": "Kenya"},
+        find_result={"confident_match": None, "candidates": []},
+    )
+
+    run_enrichment_upload(bean_profile_id, b"bytes", "image/jpeg", matcher=matcher)
+
+    assert crud.get_entry(conn, entry_id)["origin_country"] == "Colombia"
+
+
+def test_upload_error_marks_failed(conn):
+    entry_id = _create_entry(conn)
+    bean_profile_id = _bean_profile_id(conn, entry_id)
+    matcher = FakeMatcher(upload_error=RuntimeError("simulated extraction failure"))
+
+    run_enrichment_upload(bean_profile_id, b"bytes", "image/jpeg", matcher=matcher)
+
+    assert crud.get_enrichment(conn, bean_profile_id)["status"] == "failed"
+    assert matcher.find_calls == []  # never gets to the supplementary search
+
+
+def test_upload_supplementary_search_fills_gaps_without_changing_confirmed_status(conn):
+    entry_id = _create_entry(conn)
+    bean_profile_id = _bean_profile_id(conn, entry_id)
+    matcher = FakeMatcher(
+        upload_result={"origin_country": "Kenya"},
+        find_result={"confident_match": {"url": "https://funkcoffee.ca/x", "title": "X"}, "candidates": []},
+        extract_result={"fields": {"process": "Washed"}, "source_text": None},
+    )
+
+    run_enrichment_upload(bean_profile_id, b"bytes", "image/jpeg", matcher=matcher)
+
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["origin_country"] == "Kenya"  # from the upload
+    assert entry["process"] == "Washed"  # filled by the supplementary search
+    enrichment = crud.get_enrichment(conn, bean_profile_id)
+    assert enrichment["status"] == "confirmed"
+    assert enrichment["source_url"] is None  # unchanged by the supplementary search
+
+
+def test_upload_supplementary_search_never_overwrites_upload_data(conn):
+    entry_id = _create_entry(conn)
+    bean_profile_id = _bean_profile_id(conn, entry_id)
+    matcher = FakeMatcher(
+        upload_result={"process": "Washed"},
+        find_result={"confident_match": {"url": "https://funkcoffee.ca/x", "title": "X"}, "candidates": []},
+        extract_result={"fields": {"process": "Natural"}, "source_text": None},
+    )
+
+    run_enrichment_upload(bean_profile_id, b"bytes", "image/jpeg", matcher=matcher)
+
+    assert crud.get_entry(conn, entry_id)["process"] == "Washed"
+
+
+def test_upload_supplementary_search_failure_does_not_undo_the_confirmed_upload(conn):
+    entry_id = _create_entry(conn)
+    bean_profile_id = _bean_profile_id(conn, entry_id)
+    matcher = FakeMatcher(
+        upload_result={"origin_country": "Kenya"},
+        find_error=RuntimeError("simulated search failure"),
+    )
+
+    run_enrichment_upload(bean_profile_id, b"bytes", "image/jpeg", matcher=matcher)
+
+    enrichment = crud.get_enrichment(conn, bean_profile_id)
+    assert enrichment["status"] == "confirmed"
+    assert crud.get_entry(conn, entry_id)["origin_country"] == "Kenya"
+
+
+def test_upload_for_unknown_bean_profile_is_a_noop(conn):
+    matcher = FakeMatcher(upload_result={"origin_country": "Kenya"})
+    run_enrichment_upload(999, b"bytes", "image/jpeg", matcher=matcher)
+    assert matcher.upload_calls == []
+
+
+# --- crud.fill_bean_profile_gaps ---
+
+
+def test_fill_bean_profile_gaps_only_fills_nulls_and_leaves_enrichment_row_untouched(conn):
+    entry_id = _create_entry(conn, origin_country="Colombia")
+    bean_profile_id = _bean_profile_id(conn, entry_id)
+    crud.confirm_enrichment(conn, bean_profile_id, url=None, title=None, source_path=None, fields={"process": "Washed"})
+
+    crud.fill_bean_profile_gaps(conn, bean_profile_id, {"origin_country": "Kenya", "roast_level": "Light"})
+
+    entry = crud.get_entry(conn, entry_id)
+    assert entry["origin_country"] == "Colombia"  # untouched, already set
+    assert entry["process"] == "Washed"  # untouched, from the earlier confirm
+    assert entry["roast_level"] == "Light"  # filled, was blank
+    enrichment = crud.get_enrichment(conn, bean_profile_id)
+    assert enrichment["status"] == "confirmed"
+    assert enrichment["source_url"] is None
